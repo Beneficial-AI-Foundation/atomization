@@ -1,0 +1,15 @@
+name = "atomization"
+version = "0.1.0"
+defaultTargets = ["atomization"]
+
+[[lean_lib]]
+name = "Atomization"
+
+[[lean_exe]]
+name = "atomization"
+root = "Main"
+
+[[require]]
+name = "importGraph"
+git = "https://github.com/leanprover-community/import-graph.git"
+rev = "main"
