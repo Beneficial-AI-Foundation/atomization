@@ -1,4 +1,4 @@
-function fibonacci(n: int): int
+ghost function fibonacci(n: int): int
     requires n >= 0
     decreases n
 {
@@ -6,6 +6,7 @@ function fibonacci(n: int): int
     else if n == 1 then 1
     else fibonacci(n-1) + fibonacci(n-2)
 }
+
 
 method fib_method(n: int) returns (result: int)
     requires n >= 0
@@ -29,3 +30,32 @@ method fib_method(n: int) returns (result: int)
     }
     result := a;
 }
+
+// Spec function that uses a forall quantifier to express that fibonacci numbers
+// are always non-negative
+ghost function FibNonNegative(n: int): bool
+{
+    forall k :: k >= 0 ==> fibonacci(k) >= 0
+}
+
+
+// Predicate to check if a number is a fibonacci number
+ghost predicate IsFibonacci(x: int)
+{
+    exists n :: n >= 0 && fibonacci(n) == x
+}
+
+
+
+// LSP - Language Server Protocol
+//    Stuff that makes IDE's smart, before LLMs
+//    Utilize this where possible to atomize
+
+// Ranges (of line numbers) Table
+// code_id for the chunk
+// File id
+// start line (character location)
+// end line (character location)
+// Sort order [code_ids]
+
+// De-atomizer pulls 
