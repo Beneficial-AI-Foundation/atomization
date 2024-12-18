@@ -1,7 +1,7 @@
 # dafny_utils.py
 
 import re
-from typing import List, Set, Tuple
+from typing import List, Tuple
 
 def is_spec_only_function(function_body: str) -> bool:
     """Check if a function contains spec-only features."""
@@ -32,6 +32,36 @@ def read_dafny_file(filename: str) -> str:
         content = f.read()
     return remove_comments(content)
 
+def find_matching_brace(content: str, start_pos: int) -> int:
+    """Find the position of the matching closing brace, handling nested braces."""
+    count = 1
+    pos = start_pos
+    while count > 0 and pos < len(content):
+        if content[pos] == '{':
+            count += 1
+        elif content[pos] == '}':
+            count -= 1
+        pos += 1
+    return pos if count == 0 else -1
+
+def extract_lemmas(content: str) -> List[str]:
+    """Extract complete lemma declarations including their entire bodies."""
+    lemmas = []
+    # Find lemma start positions
+    for match in re.finditer(r'lemma\s+\w+', content):
+        start = match.start()
+        # Find the opening brace
+        brace_match = re.search(r'{', content[start:])
+        if brace_match:
+            brace_pos = start + brace_match.start()
+            # Find the matching closing brace
+            end_pos = find_matching_brace(content, brace_pos + 1)
+            if end_pos != -1:
+                # Extract the complete lemma including its body
+                lemma = content[start:end_pos].strip()
+                lemmas.append(lemma)
+    return lemmas
+
 def extract_verification_annotations(code: str) -> Tuple[List[str], List[str], List[str]]:
     """Extract verification annotations (invariants, decreases, assertions) from code.
     Returns tuple of (invariants, decreases, assertions)."""
@@ -53,22 +83,6 @@ def extract_verification_annotations(code: str) -> Tuple[List[str], List[str], L
         [dec.strip() for dec in decreases],
         [asrt.strip() for asrt in assertions]
     )
-
-def strip_verification_annotations(code: str) -> str:
-    """Remove verification annotations from code while preserving the core logic."""
-    # Remove invariant clauses
-    code = re.sub(r'\s*invariant[^{\n]+\n', '\n', code)
-    
-    # Remove decreases clauses
-    code = re.sub(r'\s*decreases[^{\n]+\n', '\n', code)
-    
-    # Remove assert statements
-    code = re.sub(r'\s*assert[^;]+;', '', code)
-    
-    # Clean up any multiple blank lines that might have been created
-    code = re.sub(r'\n\s*\n', '\n\n', code)
-    
-    return code
 
 def get_loop_invariants(method_body: str) -> List[str]:
     """Extract loop invariants from a method body."""

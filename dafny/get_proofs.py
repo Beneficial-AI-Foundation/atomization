@@ -1,52 +1,46 @@
 # get_proofs.py
 
 import sys
+import re
 from dataclasses import dataclass
 from typing import List
-import re
 from dafny_utils import (
     read_dafny_file,
     extract_verification_annotations,
-    get_loop_invariants
+    get_loop_invariants,
+    extract_lemmas
 )
 
 @dataclass
 class ProofContent:
-    lemmas: List[str]          # Lemma methods
+    lemmas: List[str]          # Complete lemma declarations and bodies
     invariants: List[str]      # Loop invariants
     decreases_clauses: List[str]  # Decreases clauses
     assertions: List[str]      # Assert statements
-    calc_statements: List[str] # Calc blocks for proofs
 
 def parse_dafny_file(filename: str) -> ProofContent:
     content = read_dafny_file(filename)
     
-    # Find all lemmas (including their bodies)
-    lemma_pattern = r'lemma\s+(\w+[^{]*{[^}]*})'
-    lemmas = re.findall(lemma_pattern, content, re.DOTALL)
+    # Get complete lemmas using the utility function
+    lemmas = extract_lemmas(content)
     
-    # Find methods to extract their loop invariants
+    # Find methods with their bodies
     method_pattern = r'method\s+(\w+[^{]*{[^}]*})'
     methods = re.findall(method_pattern, content, re.DOTALL)
     
-    # Collect all loop invariants
+    # Collect all loop invariants using the utility function
     all_invariants = []
     for method in methods:
         all_invariants.extend(get_loop_invariants(method))
     
-    # Get decreases clauses and assertions
+    # Get decreases clauses and assertions using the utility function
     _, decreases_clauses, assertions = extract_verification_annotations(content)
     
-    # Find calc statements (used in proofs)
-    calc_pattern = r'calc\s*{[^}]*}'
-    calc_statements = re.findall(calc_pattern, content, re.DOTALL)
-    
     return ProofContent(
-        lemmas=[lemma.strip() for lemma in lemmas],
+        lemmas=lemmas,
         invariants=[inv.strip() for inv in all_invariants],
         decreases_clauses=[dec.strip() for dec in decreases_clauses],
-        assertions=[asrt.strip() for asrt in assertions],
-        calc_statements=[calc.strip() for calc in calc_statements]
+        assertions=[asrt.strip() for asrt in assertions]
     )
 
 def main():
@@ -75,10 +69,6 @@ def main():
         print("\nAssertions:")
         for asrt in proof_content.assertions:
             print(f"  - {asrt}")
-            
-        print("\nCalc Statements:")
-        for calc in proof_content.calc_statements:
-            print(f"  {calc}\n")
             
     except FileNotFoundError:
         print(f"Error: Could not find file {filename}")
