@@ -45,7 +45,20 @@ ghost predicate IsFibonacci(x: int)
     exists n :: n >= 0 && fibonacci(n) == x
 }
 
-
+lemma FibIsNonNegative(n: int)
+    requires n >= 0
+    ensures fibonacci(n) >= 0
+{
+    if n <= 1 {
+        // Base cases are trivial
+    } else {
+        // Prove for n by using induction
+        FibIsNonNegative(n-1);
+        FibIsNonNegative(n-2);
+        // Now we know both fibonacci(n-1) and fibonacci(n-2) are non-negative
+        // So their sum must be non-negative
+    }
+}
 
 // LSP - Language Server Protocol
 //    Stuff that makes IDE's smart, before LLMs
