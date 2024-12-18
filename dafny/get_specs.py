@@ -1,13 +1,10 @@
 # get_specs.py
-
-import sys
 from dataclasses import dataclass
 from typing import List
 import re
 from dafny_utils import (
     is_spec_only_function, 
-    read_dafny_file,
-    extract_verification_annotations
+    read_dafny_file
 )
 
 @dataclass
@@ -18,7 +15,7 @@ class SpecContent:
     ghost_functions: List[str]
     spec_functions: List[str]
 
-def parse_dafny_file(filename: str) -> SpecContent:
+def get_specs(filename: str) -> SpecContent:
     content = read_dafny_file(filename)
     
     # Find requires clauses (excluding those in invariants)
@@ -49,44 +46,3 @@ def parse_dafny_file(filename: str) -> SpecContent:
         ghost_functions=[func.strip() for func in ghost_functions],
         spec_functions=spec_functions
     )
-
-def main():
-    if len(sys.argv) != 2:
-        print("Usage: python get_specs.py <dafny_file>")
-        sys.exit(1)
-        
-    filename = sys.argv[1]
-    
-    try:
-        spec_content = parse_dafny_file(filename)
-        
-        print("=== Specification Content Analysis ===")
-        print("\nRequires Clauses:")
-        for clause in spec_content.requires_clauses:
-            print(f"  - {clause}")
-            
-        print("\nEnsures Clauses:")
-        for clause in spec_content.ensures_clauses:
-            print(f"  - {clause}")
-            
-        print("\nGhost Predicates:")
-        for pred in spec_content.ghost_predicates:
-            print(f"  {pred}\n")
-            
-        print("\nGhost Functions:")
-        for func in spec_content.ghost_functions:
-            print(f"  {func}\n")
-            
-        print("\nNon-ghost Spec Functions (should be empty in modern Dafny):")
-        for func in spec_content.spec_functions:
-            print(f"  {func}\n")
-            
-    except FileNotFoundError:
-        print(f"Error: Could not find file {filename}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error parsing file: {str(e)}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()

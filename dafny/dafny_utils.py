@@ -62,6 +62,28 @@ def extract_lemmas(content: str) -> List[str]:
                 lemmas.append(lemma)
     return lemmas
 
+def strip_verification_annotations(code: str) -> str:
+    """Remove verification annotations from code while preserving the core logic."""
+    # Remove requires clauses
+    code = re.sub(r'\s*requires[^{\n]+\n', '\n', code)
+    
+    # Remove ensures clauses
+    code = re.sub(r'\s*ensures[^{\n]+\n', '\n', code)
+    
+    # Remove invariant clauses
+    code = re.sub(r'\s*invariant[^{\n]+\n', '\n', code)
+    
+    # Remove decreases clauses
+    code = re.sub(r'\s*decreases[^{\n]+\n', '\n', code)
+    
+    # Remove assert statements
+    code = re.sub(r'\s*assert[^;]+;', '', code)
+    
+    # Clean up any multiple blank lines that might have been created
+    code = re.sub(r'\n\s*\n', '\n\n', code)
+    
+    return code.strip()
+
 def extract_verification_annotations(code: str) -> Tuple[List[str], List[str], List[str]]:
     """Extract verification annotations (invariants, decreases, assertions) from code.
     Returns tuple of (invariants, decreases, assertions)."""
