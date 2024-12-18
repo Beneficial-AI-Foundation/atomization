@@ -1,0 +1,18 @@
+version = 1
+requires-python = ">=3.12"
+
+[[package]]
+name = "coq-atomization"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "coqpyt" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "coqpyt", git = "https://github.com/sr-lab/coqpyt" }]
+
+[[package]]
+name = "coqpyt"
+version = "0.0.1"
+source = { git = "https://github.com/sr-lab/coqpyt#35ebaaa4b5f8303faede4973d7d808302e22829e" }
