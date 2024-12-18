@@ -1,8 +1,9 @@
 # coq-atomization
 
-with nix, flakes, and direnv
+with nix, flakes, and direnv to manage `coq-lsp`: 
 
 ```sh
 direnv allow
-jupyter lab
+uv sync
+uv run main 
 ```

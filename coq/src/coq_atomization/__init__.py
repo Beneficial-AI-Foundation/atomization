@@ -2,10 +2,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
-from coqpyt.coq.structs import TermType
-from coqpyt.coq.base_file import CoqFile
 from coqpyt.coq.proof_file import ProofFile
-from coqpyt.coq.exceptions import InvalidChangeException
 
 
 class Atom(NamedTuple):
@@ -33,7 +30,6 @@ class CoqAtomizer(Atomizer):
             result = []
             for proof in pf.proofs:
                 _, name, signature = re.match(pattern, proof.step.short_text).groups()
-
                 atom = Atom(name, signature, [str(x) for x in proof.steps])
                 result.append(atom)
         return result
