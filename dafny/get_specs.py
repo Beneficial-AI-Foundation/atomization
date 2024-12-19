@@ -4,45 +4,51 @@ from typing import List
 import re
 from dafny_utils import (
     is_spec_only_function, 
-    read_dafny_file
+    read_dafny_file,
+    SourceLocation,
+    find_all_with_positions
 )
 
 @dataclass
 class SpecContent:
-    requires_clauses: List[str]
-    ensures_clauses: List[str]
-    ghost_predicates: List[str]
-    ghost_functions: List[str]
-    spec_functions: List[str]
+    requires_clauses: List[SourceLocation]
+    ensures_clauses: List[SourceLocation]
+    ghost_predicates: List[SourceLocation]
+    ghost_functions: List[SourceLocation]
+    spec_functions: List[SourceLocation]
 
 def get_specs(filename: str) -> SpecContent:
     content = read_dafny_file(filename)
     
     # Find requires clauses (excluding those in invariants)
     requires_pattern = r'(?<!invariant\s)requires\s+([^{\n]+)'
-    requires_clauses = re.findall(requires_pattern, content)
+    requires_clauses = find_all_with_positions(requires_pattern, content, filename)
     
     # Find ensures clauses
     ensures_pattern = r'ensures\s+([^{\n]+)'
-    ensures_clauses = re.findall(ensures_pattern, content)
+    ensures_clauses = find_all_with_positions(ensures_pattern, content, filename)
     
     # Find ghost predicates
     ghost_predicate_pattern = r'ghost\s+predicate\s+(\w+[^{]*{[^}]*})'
-    ghost_predicates = re.findall(ghost_predicate_pattern, content, re.DOTALL)
+    ghost_predicates = find_all_with_positions(ghost_predicate_pattern, content, filename)
     
     # Find ghost functions
     ghost_function_pattern = r'ghost\s+function\s+(\w+[^{]*{[^}]*})'
-    ghost_functions = re.findall(ghost_function_pattern, content, re.DOTALL)
+    ghost_functions = find_all_with_positions(ghost_function_pattern, content, filename)
     
     # Find regular functions and check if they're spec-only
     function_pattern = r'(?<!ghost\s)function\s+(?!method\b)(\w+[^{]*{[^}]*})'
-    functions = re.findall(function_pattern, content, re.DOTALL)
-    spec_functions = [func.strip() for func in functions if is_spec_only_function(func)]
+    functions = find_all_with_positions(function_pattern, content, filename)
+    
+    spec_functions = [
+        func for func in functions 
+        if is_spec_only_function(func.content)
+    ]
     
     return SpecContent(
-        requires_clauses=[clause.strip() for clause in requires_clauses],
-        ensures_clauses=[clause.strip() for clause in ensures_clauses],
-        ghost_predicates=[pred.strip() for pred in ghost_predicates],
-        ghost_functions=[func.strip() for func in ghost_functions],
+        requires_clauses=requires_clauses,
+        ensures_clauses=ensures_clauses,
+        ghost_predicates=ghost_predicates,
+        ghost_functions=ghost_functions,
         spec_functions=spec_functions
     )

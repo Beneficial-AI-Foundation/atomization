@@ -1,7 +1,17 @@
 # dafny_utils.py
 
 import re
+from dataclasses import dataclass
 from typing import List, Tuple
+
+@dataclass
+class SourceLocation:
+    filename: str
+    start_line: int
+    start_col: int
+    end_line: int
+    end_col: int
+    content: str
 
 def is_spec_only_function(function_body: str) -> bool:
     """Check if a function contains spec-only features."""
@@ -118,3 +128,61 @@ def get_loop_invariants(method_body: str) -> List[str]:
         all_invariants.extend(invariants)
     
     return all_invariants
+
+def get_location(content: str, match_start: int, match_end: int, filename: str) -> SourceLocation:
+    """
+    Convert a string index position into line and column numbers.
+    
+    Args:
+        content: The full file content
+        match_start: Starting index of the match
+        match_end: Ending index of the match
+        filename: Name of the source file
+        
+    Returns:
+        SourceLocation object containing filename, start/end positions, and the content
+    """
+    # Get content up to start position to count lines and cols
+    pre_content = content[:match_start]
+    start_line = pre_content.count('\n') + 1
+    if start_line == 1:
+        start_col = match_start + 1
+    else:
+        start_col = match_start - pre_content.rindex('\n')
+
+    # Get content up to end position
+    pre_end_content = content[:match_end]
+    end_line = pre_end_content.count('\n') + 1
+    if end_line == 1:
+        end_col = match_end + 1
+    else:
+        end_col = match_end - pre_end_content.rindex('\n')
+
+    # Extract the actual content
+    matched_content = content[match_start:match_end]
+
+    return SourceLocation(
+        filename=filename,
+        start_line=start_line,
+        start_col=start_col,
+        end_line=end_line,
+        end_col=end_col,
+        content=matched_content.strip()
+    )
+
+def find_all_with_positions(pattern: str, content: str, filename: str) -> List[SourceLocation]:
+    """
+    Find all matches of a pattern and return their source locations.
+    
+    Args:
+        pattern: Regex pattern to match
+        content: Source content to search
+        filename: Name of the source file
+        
+    Returns:
+        List of SourceLocation objects for each match
+    """
+    locations = []
+    for match in re.finditer(pattern, content, re.MULTILINE | re.DOTALL):
+        locations.append(get_location(content, match.start(), match.end(), filename))
+    return locations

@@ -5,38 +5,40 @@ from typing import List
 from dafny_utils import (
     read_dafny_file,
     extract_verification_annotations,
-    get_loop_invariants,
-    extract_lemmas
+    find_all_with_positions,
+    SourceLocation,
+    get_loop_invariants
 )
 
 @dataclass
 class ProofContent:
-    lemmas: List[str]
-    invariants: List[str]
-    decreases_clauses: List[str]
-    assertions: List[str]
+    lemmas: List[SourceLocation]
+    invariants: List[SourceLocation]
+    decreases_clauses: List[SourceLocation]
+    assertions: List[SourceLocation]
 
 def get_proofs(filename: str) -> ProofContent:
     content = read_dafny_file(filename)
     
-    # Get complete lemmas using the utility function
-    lemmas = extract_lemmas(content)
+    # Find lemmas
+    lemma_pattern = r'lemma\s+(\w+[^{]*{[^}]*})'
+    lemmas = find_all_with_positions(lemma_pattern, content, filename)
     
-    # Find methods with their bodies
-    method_pattern = r'method\s+(\w+[^{]*{[^}]*})'
-    methods = re.findall(method_pattern, content, re.DOTALL)
+    # Find invariants
+    invariant_pattern = r'invariant\s+([^{\n]+)'
+    invariants = find_all_with_positions(invariant_pattern, content, filename)
     
-    # Collect all loop invariants using the utility function
-    all_invariants = []
-    for method in methods:
-        all_invariants.extend(get_loop_invariants(method))
+    # Find decreases clauses
+    decreases_pattern = r'decreases\s+([^{\n]+)'
+    decreases = find_all_with_positions(decreases_pattern, content, filename)
     
-    # Get decreases clauses and assertions using the utility function
-    _, decreases_clauses, assertions = extract_verification_annotations(content)
+    # Find assertions
+    assert_pattern = r'assert\s+([^;]+);'
+    assertions = find_all_with_positions(assert_pattern, content, filename)
     
     return ProofContent(
         lemmas=lemmas,
-        invariants=[inv.strip() for inv in all_invariants],
-        decreases_clauses=[dec.strip() for dec in decreases_clauses],
-        assertions=[asrt.strip() for asrt in assertions]
+        invariants=invariants,
+        decreases_clauses=decreases,
+        assertions=assertions
     )
