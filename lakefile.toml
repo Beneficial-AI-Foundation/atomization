@@ -12,4 +12,9 @@ root = "Main"
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover-community/import-graph.git"
-rev = "main"
+rev = "e285a7a"
+
+[[require]]
+name = "lean_extras"
+git = "https://github.com/adamtopaz/lean_extras.git"
+rev = "master"
