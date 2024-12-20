@@ -13,6 +13,7 @@ root = "Main"
 name = "importGraph"
 git = "https://github.com/leanprover-community/import-graph.git"
 rev = "e285a7a"
+# rev = "main"
 
 [[require]]
 name = "lean_extras"
