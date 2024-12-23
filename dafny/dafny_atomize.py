@@ -81,7 +81,15 @@ def main():
     filename = sys.argv[1]
     try:
         result = atomize_dafny(filename)
+        # Print to stdout
         print(json.dumps(result, indent=2))
+        
+        # Write to JSON file
+        output_filename = filename.rsplit('.', 1)[0] + '_analysis.json'
+        with open(output_filename, 'w') as f:
+            json.dump(result, f, indent=2)
+            
+        print(f"\nAnalysis saved to {output_filename}")
     except Exception as e:
         print(f"Error: {str(e)}")
         sys.exit(1)

@@ -4,3 +4,4 @@ __pycache__/
 
 # Dafny
 dafny/*.json
+dafny/dafny_files/*.json
