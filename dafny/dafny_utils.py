@@ -130,7 +130,7 @@ def get_loop_invariants(method_body: str) -> List[str]:
     
     return all_invariants
 
-def get_parent_name(content: str, start_pos: int) -> str | None:
+def get_parent_name(content: str, start_pos: int, parent_pattern: str) -> str | None:
     """Get the most immediate parent name of a code segment."""
     # Pattern to match any kind of parent declaration
     parent_pattern = r'(ghost\s+)?(function|method|predicate|lemma)\s+\w+'
@@ -180,9 +180,12 @@ def get_location(content: str, match_start: int, match_end: int, filename: str) 
     # Extract the actual content
     matched_content = content[match_start:match_end]
 
+    parent_pattern = r'(ghost\s+)?(function|method|predicate|lemma)\s+\w+'
+    parent = None
     # Get parent method or function name
-    
-    parent = get_parent_name(content, match_start)
+    if re.search(parent_pattern, matched_content) == None:
+        parent = get_parent_name(content, match_start, parent_pattern)
+    # parent = get_parent_name(content, match_start, parent_pattern)
 
     return SourceLocation(
         filename=filename,
