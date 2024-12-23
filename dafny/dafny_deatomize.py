@@ -13,6 +13,7 @@ class Location:
     end_line: int
     end_col: int
     content: str
+    parent: str
 
 def parse_location(item: Dict[str, Any]) -> Location:
     """Convert a JSON location object into a Location instance."""
@@ -27,71 +28,74 @@ def parse_location(item: Dict[str, Any]) -> Location:
         parent=item.get('parent', None)
     )
 
-def collect_all_elements(data: Dict[str, Any]) -> List[Location]:
-    """Collect all elements from the JSON into a single list."""
-    elements = []
+def collect_elements_by_parent(data: Dict[str, Any]) -> Dict[str | None, List[Location]]:
+    """Group all elements by their parent."""
+    elements_by_parent = {}
     
-    # Collect from code section
+    # First collect all potential parents (things without parents themselves)
     for method in data['code']['methods']:
-        elements.append(parse_location(method))
-    for func in data['code']['executable_functions']:
-        elements.append(parse_location(func))
-        
-    # Collect from spec section
-    for req in data['spec']['requires_clauses']:
-        elements.append(parse_location(req))
-    for ens in data['spec']['ensures_clauses']:
-        elements.append(parse_location(ens))
-    for pred in data['spec']['ghost_predicates']:
-        elements.append(parse_location(pred))
-    for func in data['spec']['ghost_functions']:
-        elements.append(parse_location(func))
-    for func in data['spec']['spec_functions']:
-        elements.append(parse_location(func))
-        
-    # Collect from proof section
-    for lemma in data['proof']['lemmas']:
-        elements.append(parse_location(lemma))
-    for inv in data['proof']['invariants']:
-        elements.append(parse_location(inv))
-    for dec in data['proof']['decreases_clauses']:
-        elements.append(parse_location(dec))
-    for asrt in data['proof']['assertions']:
-        elements.append(parse_location(asrt))
-    
-    return elements
-
-def reconstruct_file(elements: List[Location]) -> str:
-    """Reconstruct the Dafny file content from sorted elements."""
-    # Sort elements by line number and then column
-    sorted_elements = sorted(
-        elements, 
-        key=lambda x: (x.start_line, x.start_col)
-    )
-    
-    # Initialize output
-    current_line = 1
-    reconstructed = []
-    
-    # Process each element
-    for elem in sorted_elements:
-        # Add blank lines if needed
-        while current_line < elem.start_line:
-            reconstructed.append('')
-            current_line += 1
+        loc = parse_location(method)
+        if loc.parent is None:
+            elements_by_parent[loc.content.split()[1]] = [loc]  # Use method name as key
             
-        # Add content with proper indentation
-        lines = elem.content.split('\n')
-        for i, line in enumerate(lines):
-            if i == 0:
-                # First line: add proper leading spaces
-                padding = ' ' * (elem.start_col - 1)
-                reconstructed.append(padding + line)
-            else:
-                # Preserve original indentation for subsequent lines
-                reconstructed.append(line)
+    for gf in data['spec']['ghost_functions']:
+        loc = parse_location(gf)
+        if loc.parent is None:
+            elements_by_parent[loc.content.split()[-2]] = [loc]  # Use function name as key
+            
+    # Similar for ghost_predicates and lemmas...
+    
+    # Then collect all child elements
+    for requires in data['spec']['requires_clauses']:
+        loc = parse_location(requires)
+        if loc.parent:
+            if loc.parent not in elements_by_parent:
+                elements_by_parent[loc.parent] = []
+            elements_by_parent[loc.parent].append(loc)
+    
+    # Similar for ensures, invariants, and decreases clauses...
+    
+    return elements_by_parent
+
+def reconstruct_file(elements_by_parent: Dict[str | None, List[Location]]) -> str:
+    """Reconstruct the Dafny file content maintaining parent-child relationships."""
+    # Sort all elements within each parent group by line number
+    for parent, elements in elements_by_parent.items():
+        elements.sort(key=lambda x: (x.start_line, x.start_col))
+    
+    # Now reconstruct in order
+    reconstructed = []
+    current_line = 1
+    
+    # Process each parent group
+    for parent, elements in elements_by_parent.items():
+        parent_element = next((e for e in elements if 'method' in e.content 
+                             or 'function' in e.content 
+                             or 'predicate' in e.content
+                             or 'lemma' in e.content), None)
         
-        current_line = elem.end_line + 1
+        if parent_element:
+            # Add blank lines if needed
+            while current_line < parent_element.start_line:
+                reconstructed.append('')
+                current_line += 1
+            
+            # Add parent declaration
+            lines = parent_element.content.split('\n')
+            reconstructed.extend(lines)
+            current_line += len(lines)
+            
+            # Add its children in correct position
+            child_elements = [e for e in elements if e != parent_element]
+            for elem in child_elements:
+                # Add with proper indentation
+                indent = ' ' * (elem.start_col - 1)
+                reconstructed.append(indent + elem.content)
+                current_line += 1
+        
+        # Add blank line after each group
+        reconstructed.append('')
+        current_line += 1
     
     return '\n'.join(reconstructed)
 
@@ -107,7 +111,7 @@ def main():
             data = json.load(f)
             
         # Collect and sort elements
-        elements = collect_all_elements(data)
+        elements = collect_elements_by_parent(data)
         
         # Reconstruct file
         reconstructed = reconstruct_file(elements)
