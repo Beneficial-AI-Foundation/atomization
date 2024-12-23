@@ -12,6 +12,7 @@ class SourceLocation:
     end_line: int
     end_col: int
     content: str
+    parent: str = None
 
 def is_spec_only_function(function_body: str) -> bool:
     """Check if a function contains spec-only features."""
@@ -129,6 +130,14 @@ def get_loop_invariants(method_body: str) -> List[str]:
     
     return all_invariants
 
+def get_parent_method_or_function(content: str, start_pos: int) -> str:
+    """Get the parent method or function name of a code segment."""
+    # Find the first preceding function or method keyword
+    func_match = re.search(r'(function|method)\s+\w+', content[:start_pos])
+    if func_match:
+        return func_match.group().split()[1]
+    return None
+
 def get_location(content: str, match_start: int, match_end: int, filename: str) -> SourceLocation:
     """
     Convert a string index position into line and column numbers.
@@ -161,13 +170,18 @@ def get_location(content: str, match_start: int, match_end: int, filename: str) 
     # Extract the actual content
     matched_content = content[match_start:match_end]
 
+    # Get parent method or function name
+    
+    parent = get_parent_method_or_function(content, match_start)
+
     return SourceLocation(
         filename=filename,
         start_line=start_line,
         start_col=start_col,
         end_line=end_line,
         end_col=end_col,
-        content=matched_content.strip()
+        content=matched_content.strip(),
+        parent=parent
     )
 
 def find_all_with_positions(pattern: str, content: str, filename: str) -> List[SourceLocation]:

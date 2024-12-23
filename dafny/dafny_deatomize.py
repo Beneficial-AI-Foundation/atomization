@@ -23,7 +23,8 @@ def parse_location(item: Dict[str, Any]) -> Location:
         start_col=loc['start_col'],
         end_line=loc['end_line'],
         end_col=loc['end_col'],
-        content=item['content']
+        content=item['content'],
+        parent=item.get('parent', None)
     )
 
 def collect_all_elements(data: Dict[str, Any]) -> List[Location]:

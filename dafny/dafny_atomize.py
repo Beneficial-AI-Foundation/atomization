@@ -17,7 +17,8 @@ def format_code_segment(source_loc: SourceLocation) -> dict:
             'end_line': source_loc.end_line,
             'end_col': source_loc.end_col
         },
-        'content': source_loc.content
+        'content': source_loc.content,
+        'parent': source_loc.parent
     }
 
 def atomize_dafny(filename: str) -> dict:
