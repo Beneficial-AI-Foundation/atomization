@@ -27,6 +27,8 @@ method fib_method(n: int) returns (result: int)
     b := c;
     i := i + 1;
   }
+  result := a;
+}
   requires n >= 0
   ensures result == fibonacci(n)
 

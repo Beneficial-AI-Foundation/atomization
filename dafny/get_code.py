@@ -19,7 +19,7 @@ def get_code(filename: str) -> CodeContent:
     content = read_dafny_file(filename)
     
     # Find methods with their bodies (excluding lemmas)
-    method_pattern = r'(?<!lemma\s)method\s+(\w+[^{]*{[^}]*})'
+    method_pattern = r'(?<!lemma\s)method\s+\w+[^{]*{(?:[^{}]|{[^{}]*})*}'
     methods = find_all_with_positions(method_pattern, content, filename)
     
     # Find non-ghost functions
