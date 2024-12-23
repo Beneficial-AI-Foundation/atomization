@@ -130,12 +130,22 @@ def get_loop_invariants(method_body: str) -> List[str]:
     
     return all_invariants
 
-def get_parent_method_or_function(content: str, start_pos: int) -> str:
-    """Get the parent method or function name of a code segment."""
-    # Find the first preceding function or method keyword
-    func_match = re.search(r'(function|method)\s+\w+', content[:start_pos])
-    if func_match:
-        return func_match.group().split()[1]
+def get_parent_name(content: str, start_pos: int) -> str | None:
+    """Get the most immediate parent name of a code segment."""
+    # Pattern to match any kind of parent declaration
+    parent_pattern = r'(ghost\s+)?(function|method|predicate|lemma)\s+\w+'
+    
+    # Get content up to our position and reverse it for searching backwards
+    prefix = content[:start_pos]
+    prefix_lines = prefix.split('\n')
+    
+    # Search through lines in reverse until we find a parent declaration
+    for line in reversed(prefix_lines):
+        match = re.search(parent_pattern, line)
+        if match:
+            words = match.group().split()
+            return words[-1]
+    
     return None
 
 def get_location(content: str, match_start: int, match_end: int, filename: str) -> SourceLocation:
@@ -172,7 +182,7 @@ def get_location(content: str, match_start: int, match_end: int, filename: str) 
 
     # Get parent method or function name
     
-    parent = get_parent_method_or_function(content, match_start)
+    parent = get_parent_name(content, match_start)
 
     return SourceLocation(
         filename=filename,
