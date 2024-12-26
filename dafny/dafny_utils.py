@@ -13,6 +13,7 @@ class SourceLocation:
     end_col: int
     content: str
     parent: str = None
+    context: str = None
 
 def is_spec_only_function(function_body: str) -> bool:
     """Check if a function contains spec-only features."""

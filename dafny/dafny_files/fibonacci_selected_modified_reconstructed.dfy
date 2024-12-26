@@ -1,12 +1,12 @@
 ghost function fibonacci(n: int): int
    requires n >= 0
-  requires n >= 0
-  decreases n
+   decreases n
 {
   if n == 0 then 0
   else if n == 1 then 1
   else fibonacci(n-1) + fibonacci(n-2)
 }
+
 
 
 
@@ -70,8 +70,6 @@ ghost predicate IsFibonacci(x: int)
 lemma FibIsNonNegative(n: int)
    requires n >= 0
    ensures fibonacci(n) >= 0
-  requires n >= 0
-  ensures fibonacci(n) >= 0
 {
   if n <= 1 {
 
@@ -79,7 +77,6 @@ lemma FibIsNonNegative(n: int)
 
     FibIsNonNegative(n-1);
     FibIsNonNegative(n-2);
-
 
   }
 }

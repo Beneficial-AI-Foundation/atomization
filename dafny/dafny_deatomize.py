@@ -3,7 +3,7 @@
 import json
 import sys
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 @dataclass
 class Location:
@@ -14,6 +14,7 @@ class Location:
     end_col: int
     content: str
     parent: str
+    context: Optional[str] = None
 
 def parse_location(item: Dict[str, Any]) -> Location:
     """Convert a JSON location object into a Location instance."""
@@ -25,7 +26,8 @@ def parse_location(item: Dict[str, Any]) -> Location:
         end_line=loc['end_line'],
         end_col=loc['end_col'],
         content=item['content'],
-        parent=item.get('parent', None)
+        parent=item.get('parent', None),
+        context=item.get('context', None)
     )
 
 def collect_elements_by_parent(data: Dict[str, Any]) -> Dict[str | None, List[Location]]:
@@ -100,12 +102,6 @@ def reconstruct_file(elements_by_parent: Dict[str, List[Location]], parent_order
         decreases = sorted([e for e in elements if "decreases" in e.content],
                          key=lambda x: (x.start_line, x.start_col))
         
-        print(f"\nProcessing parent: {parent_name}")
-        print(f"Found {len(invariants)} invariants")
-        if invariants:
-            print("Invariants:")
-            for inv in invariants:
-                print(f"  {inv.content} (parent: {inv.parent})")
         # Add blank lines if needed
         while current_line < parent_elem.start_line:
             reconstructed.append('')
@@ -118,14 +114,21 @@ def reconstruct_file(elements_by_parent: Dict[str, List[Location]], parent_order
         # Add first line (signature)
         reconstructed.append(body_indent + parent_lines[0])
         
-        # Add requires/ensures if any
+        # Add requires/ensures/decreases if any
         indent = ' ' * (parent_elem.start_col + 2)
         for req in requires:
             if req.parent == parent_name:  # Only add if it belongs to this parent
                 reconstructed.append(indent + req.content)
+        
         for ens in ensures:
             if ens.parent == parent_name:
                 reconstructed.append(indent + ens.content)
+        
+        # Add top-level function/method decreases clauses
+        for dec in decreases:
+            if (dec.parent == parent_name and 
+                (dec.context == 'ghost_function' or dec.context == 'method')):
+                reconstructed.append(indent + dec.content)
             
         # Process remaining lines, adding invariants where needed
         in_while = False
@@ -137,9 +140,11 @@ def reconstruct_file(elements_by_parent: Dict[str, List[Location]], parent_order
                 for inv in invariants:
                     if inv.parent == parent_name:
                         reconstructed.append(indent + inv.content)
-                # Add loop decreases
+                
+                # Add while loop decreases 
                 for dec in decreases:
-                    if dec.parent == parent_name and dec.start_line > parent_elem.start_line:
+                    if (dec.parent == parent_name and 
+                        dec.context == 'while_loop'):
                         reconstructed.append(indent + dec.content)
             else:
                 reconstructed.append(body_indent + line if line.strip() else '')

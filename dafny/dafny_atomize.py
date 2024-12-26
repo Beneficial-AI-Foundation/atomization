@@ -9,7 +9,7 @@ from dafny_utils import SourceLocation
 
 def format_code_segment(source_loc: SourceLocation) -> dict:
     """Format a source location into a dictionary with location and content."""
-    return {
+    formatted = {
         'location': {
             'filename': source_loc.filename,
             'start_line': source_loc.start_line,
@@ -20,6 +20,12 @@ def format_code_segment(source_loc: SourceLocation) -> dict:
         'content': source_loc.content,
         'parent': source_loc.parent
     }
+    
+    # Add context if it exists
+    if hasattr(source_loc, 'context') and source_loc.context is not None:
+        formatted['context'] = source_loc.context
+    
+    return formatted
 
 def atomize_dafny(filename: str) -> dict:
     """Analyze a Dafny file and return its code, spec, and proof components."""
@@ -27,7 +33,6 @@ def atomize_dafny(filename: str) -> dict:
         code_content = get_code(filename)
         spec_content = get_specs(filename)
         proof_content = get_proofs(filename)
-        
         
         return {
             "code": {
