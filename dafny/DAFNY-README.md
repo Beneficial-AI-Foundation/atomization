@@ -16,3 +16,14 @@ Dafny Atomizer treats the `ensures` and `requires` clauses as `spec`, as well as
 ## Proof
 The `invariant`, `decreases`, `assert`, and `lemma` clauses and objects are collected as `proof` atoms.
 
+## Usage
+
+### Atomize
+```python
+python dafny_atomize.py /path/to/dafny/file.dfy
+```
+
+### Deatomize
+```python
+python dafny_deatomize.py /path/to/atomized/analysis.json
+```
