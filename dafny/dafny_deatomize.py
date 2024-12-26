@@ -77,8 +77,10 @@ def collect_elements_by_parent(data: Dict[str, Any]) -> Dict[str | None, List[Lo
         if loc.parent and loc.parent in elements_by_parent:
             elements_by_parent[loc.parent].append(loc)
             
+    # Modify the collection of child elements to use both parent and context
     for dec in data['proof']['decreases_clauses']:
         loc = parse_location(dec)
+        # Check if parent exists and matches a known parent
         if loc.parent and loc.parent in elements_by_parent:
             elements_by_parent[loc.parent].append(loc)
             
@@ -114,28 +116,38 @@ def reconstruct_file(elements_by_parent: Dict[str, List[Location]], parent_order
         # Add first line (signature)
         reconstructed.append(body_indent + parent_lines[0])
         
-        # Add requires/ensures/decreases if any
+        # Add requires/ensures if any
         indent = ' ' * (parent_elem.start_col + 2)
+        
+        # Track added requires/ensures to avoid duplicates
+        added_requires = set()
+        added_ensures = set()
+        
         for req in requires:
-            if req.parent == parent_name:  # Only add if it belongs to this parent
+            if req.parent == parent_name and req.content not in added_requires:
                 reconstructed.append(indent + req.content)
+                added_requires.add(req.content)
         
         for ens in ensures:
-            if ens.parent == parent_name:
+            if ens.parent == parent_name and ens.content not in added_ensures:
                 reconstructed.append(indent + ens.content)
+                added_ensures.add(ens.content)
         
-        # Add top-level function/method decreases clauses
+        # Add decreases clauses only for ghost functions or methods at the top level
         for dec in decreases:
             if (dec.parent == parent_name and 
-                (dec.context == 'ghost_function' or dec.context == 'method')):
+                (dec.context == 'ghost_function' or 
+                 dec.context == 'method')):
                 reconstructed.append(indent + dec.content)
             
         # Process remaining lines, adding invariants where needed
         in_while = False
+        
         for line in parent_lines[1:]:
             if "while" in line and "{" not in line:
                 in_while = True
                 reconstructed.append(body_indent + line)
+                
                 # Add invariants
                 for inv in invariants:
                     if inv.parent == parent_name:
@@ -146,8 +158,9 @@ def reconstruct_file(elements_by_parent: Dict[str, List[Location]], parent_order
                     if (dec.parent == parent_name and 
                         dec.context == 'while_loop'):
                         reconstructed.append(indent + dec.content)
+            
             else:
-                reconstructed.append(body_indent + line if line.strip() else '')
+                reconstructed.append(body_indent + line)
         
         # Add blank line after
         reconstructed.append('')

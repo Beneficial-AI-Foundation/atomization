@@ -22,10 +22,10 @@ class ProofContent:
 def get_proofs(filename: str) -> ProofContent:
     content = read_dafny_file(filename)
     
-    # Find lemmas with annotations stripped
+    # Find lemmas
     lemma_pattern = r'lemma\s+\w+[^{]*{(?:[^{}]|{[^{}]*})*}'
     lemmas = []
-    for match in re.finditer(lemma_pattern, content):
+    for match in re.finditer(lemma_pattern, content, re.DOTALL):
         loc = get_location(content, match.start(), match.end(), filename)
         
         # Strip verification annotations from the content
@@ -45,6 +45,9 @@ def get_proofs(filename: str) -> ProofContent:
     decreases_pattern = r'decreases\s+([^{\n]+)'
     decreases_clauses = []
     
+    # Find all while loops in the content
+    while_loop_pattern = r'while\s+[^{]*{(?:[^{}]|{[^{}]*})*}'
+    
     for match in re.finditer(decreases_pattern, content):
         # Get the full location
         loc = get_location(content, match.start(), match.end(), filename)
@@ -55,20 +58,41 @@ def get_proofs(filename: str) -> ProofContent:
         
         # Look back to determine context
         context = None
-        for line in reversed(lines):
-            if re.search(r'method\s+\w+', line):
-                context = 'method'
+        context_content = None
+        current_method = None
+        
+        # Find the current method
+        method_pattern = r'method\s+(\w+)[^{]*{(?:[^{}]|{[^{}]*})*}'
+        for method_match in re.finditer(method_pattern, content, re.DOTALL):
+            if match.start() > method_match.start() and match.start() < method_match.end():
+                current_method = method_match.group(1)
                 break
-            elif re.search(r'ghost\s+function\s+\w+', line):
-                context = 'ghost_function'
-                break
-            elif re.search(r'while', line):
+        
+        # Find the specific while loop containing this decreases clause
+        for while_match in re.finditer(while_loop_pattern, content, re.DOTALL):
+            if match.start() > while_match.start() and match.start() < while_match.end():
                 context = 'while_loop'
+                context_content = while_match.group(0)
                 break
+        
+        # If no while loop found, check for method or ghost function
+        if context is None:
+            for line in reversed(lines):
+                if re.search(r'method\s+\w+', line):
+                    context = 'method'
+                    break
+                elif re.search(r'ghost\s+function\s+\w+', line):
+                    context = 'ghost_function'
+                    break
         
         # Modify the location to include context
         if hasattr(loc, 'context'):
             loc.context = context
+            if context_content:
+                # Store the entire while loop content
+                loc.context_content = context_content
+            if current_method:
+                loc.parent = current_method
         else:
             # Fallback for older SourceLocation implementations
             loc = SourceLocation(
@@ -78,8 +102,9 @@ def get_proofs(filename: str) -> ProofContent:
                 end_line=loc.end_line,
                 end_col=loc.end_col,
                 content=loc.content,
-                parent=loc.parent,
-                context=context
+                parent=current_method,
+                context=context,
+                context_content=context_content
             )
         
         decreases_clauses.append(loc)
