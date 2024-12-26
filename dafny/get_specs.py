@@ -17,7 +17,6 @@ class SpecContent:
     ensures_clauses: List[SourceLocation]
     ghost_predicates: List[SourceLocation]
     ghost_functions: List[SourceLocation]
-    spec_functions: List[SourceLocation]
 
 def get_specs(filename: str) -> SpecContent:
     content = read_dafny_file(filename)
@@ -54,15 +53,10 @@ def get_specs(filename: str) -> SpecContent:
     function_pattern = r'(?<!ghost\s)function\s+(?!method\b)(\w+[^{]*{[^}]*})'
     functions = find_all_with_positions(function_pattern, content, filename)
     
-    spec_functions = [
-        func for func in functions 
-        if is_spec_only_function(func.content)
-    ]
     
     return SpecContent(
         requires_clauses=requires_clauses,
         ensures_clauses=ensures_clauses,
         ghost_predicates=ghost_predicates,
         ghost_functions=ghost_functions,
-        spec_functions=spec_functions
     )

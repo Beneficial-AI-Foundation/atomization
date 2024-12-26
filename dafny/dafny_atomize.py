@@ -55,9 +55,6 @@ def atomize_dafny(filename: str) -> dict:
                 ],
                 "ghost_functions": [
                     format_code_segment(func) for func in spec_content.ghost_functions
-                ],
-                "spec_functions": [
-                    format_code_segment(func) for func in spec_content.spec_functions
                 ]
             },
             "proof": {
