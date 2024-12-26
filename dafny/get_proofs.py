@@ -21,7 +21,7 @@ def get_proofs(filename: str) -> ProofContent:
     content = read_dafny_file(filename)
     
     # Find lemmas
-    lemma_pattern = r'lemma\s+(\w+[^{]*{[^}]*})'
+    lemma_pattern = r'lemma\s+\w+[^{]*{(?:[^{}]|{[^{}]*})*}'
     lemmas = find_all_with_positions(lemma_pattern, content, filename)
     
     # Find invariants
