@@ -15,6 +15,7 @@ class Location:
     content: str
     parent: str
     context: Optional[str] = None
+    context_content: Optional[str] = None
 
 def parse_location(item: Dict[str, Any]) -> Location:
     """Convert a JSON location object into a Location instance."""
@@ -27,7 +28,8 @@ def parse_location(item: Dict[str, Any]) -> Location:
         end_col=loc['end_col'],
         content=item['content'],
         parent=item.get('parent', None),
-        context=item.get('context', None)
+        context=item.get('context', None),
+        context_content=item.get('context_content', None)
     )
 
 def collect_elements_by_parent(data: Dict[str, Any]) -> Dict[str | None, List[Location]]:

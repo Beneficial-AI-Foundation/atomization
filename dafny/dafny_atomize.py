@@ -18,12 +18,17 @@ def format_code_segment(source_loc: SourceLocation) -> dict:
             'end_col': source_loc.end_col
         },
         'content': source_loc.content,
-        'parent': source_loc.parent
+        'parent': source_loc.parent,
+        'context_content': source_loc.context_content
     }
     
     # Add context if it exists
     if hasattr(source_loc, 'context') and source_loc.context is not None:
         formatted['context'] = source_loc.context
+
+    # Add context_content if it exists
+    if hasattr(source_loc, 'context_content') and source_loc.context_content is not None:
+        formatted['context_content'] = source_loc.context_content
     
     return formatted
 
