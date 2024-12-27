@@ -116,22 +116,9 @@ def get_proofs(filename: str) -> ProofContent:
         
         # Find the specific while loop containing this decreases clause
         for while_match in re.finditer(while_condition_pattern, content, re.DOTALL):
-            print(f"While match start: {while_match.start()}")
-            print(f"While match end: {while_match.end()}")
-            print(f"While condition: '{while_match.group(1)}'")
-            
-            # Print detailed comparison information
-            print(f"Comparison details:")
-            print(f"match.start() = {match.start()}")
-            print(f"while_match.start() = {while_match.start()}")
-            print(f"while_match.end() = {while_match.end()}")
-            print(f"Condition 1 (match.start() > while_match.start()): {match.start() > while_match.start()}")
-            print(f"Condition 2 (match.start() < while_match.end()): {match.start() < while_match.end()}")
-        
             if match.start() > while_match.start(): # and match.start() < while_match.end():
                 context = 'while_loop'
                 context_content = f"while {while_match.group(1).strip()}"
-                print(f"Captured condition: '{context_content}'")
                 break
         # If no while loop found, check for method or ghost function
         if context is None:
