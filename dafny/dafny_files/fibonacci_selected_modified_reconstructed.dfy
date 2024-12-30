@@ -9,36 +9,6 @@ ghost function fibonacci(n: int): int
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ghost function FibNonNegative(n: int): bool
-{
-  forall k :: k >= 0 ==> fibonacci(k) >= 0
-}
-
 method fib_method(n: int) returns (result: int)
    requires n >= 0
    ensures result == fibonacci(n)
@@ -61,6 +31,15 @@ method fib_method(n: int) returns (result: int)
   }
   result := a;
 }
+
+
+
+ghost function FibNonNegative(n: int): bool
+{
+  forall k :: k >= 0 ==> fibonacci(k) >= 0
+}
+
+
 
 ghost predicate IsFibonacci(x: int)
 {
