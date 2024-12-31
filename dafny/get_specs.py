@@ -15,8 +15,10 @@ from dafny_utils import (
 class SpecContent:
     requires_clauses: List[SourceLocation]
     ensures_clauses: List[SourceLocation]
+    reads_clauses: List[SourceLocation]
     ghost_predicates: List[SourceLocation]
     ghost_functions: List[SourceLocation]
+
 
 def get_specs(filename: str) -> SpecContent:
     content = read_dafny_file(filename)
@@ -28,7 +30,10 @@ def get_specs(filename: str) -> SpecContent:
     # Find ensures clauses
     ensures_pattern = r'ensures\s+([^{\n]+)'
     ensures_clauses = find_all_with_positions(ensures_pattern, content, filename)
-    
+    # Find reads clauses
+    reads_pattern = r'reads\s+([^{\n]+)'
+    reads_clauses = find_all_with_positions(reads_pattern, content, filename)
+
     # Find ghost predicates with annotations stripped
     ghost_predicate_pattern = r'ghost\s+predicate\s+(\w+[^{]*{[^}]*})'
     ghost_predicates = []
@@ -57,6 +62,7 @@ def get_specs(filename: str) -> SpecContent:
     return SpecContent(
         requires_clauses=requires_clauses,
         ensures_clauses=ensures_clauses,
+        reads_clauses=reads_clauses,
         ghost_predicates=ghost_predicates,
         ghost_functions=ghost_functions,
     )

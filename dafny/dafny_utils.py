@@ -17,12 +17,12 @@ class SourceLocation:
     context_content: str = None
 
 def is_spec_only_function(function_body: str) -> bool:
-    """Check if a function contains spec-only features."""
+    """Check if a function contains specification-only features."""
     spec_features = [
+        r'\bforall\b(?!.*==>.*requires)',  # forall but not in requires clause
+        r'\bexists\b',       # exists quantifier
         r'\bold\b',          # old keyword
         r'\bunchanged\b',    # unchanged keyword
-        r'\bforall\b',       # quantifiers
-        r'\bexists\b',       # quantifiers
         r'\bFresh\b',        # Fresh keyword
         r'\ballocated\b',    # allocated keyword
         r'\breveal_\w+\b',   # reveal statements
@@ -83,6 +83,9 @@ def strip_verification_annotations(code: str) -> str:
     # Remove ensures clauses
     code = re.sub(r'\s*ensures[^{\n]+\n', '\n', code)
     
+    # Remove reads clauses
+    code = re.sub(r'\s*reads[^{\n]+\n', '\n', code)  # Add this line
+    
     # Remove invariant clauses
     code = re.sub(r'\s*invariant[^{\n]+\n', '\n', code)
     
@@ -92,7 +95,7 @@ def strip_verification_annotations(code: str) -> str:
     # Remove assert statements
     code = re.sub(r'\s*assert[^;]+;', '', code)
     
-    # Clean up any multiple blank lines that might have been created
+    # Clean up any multiple blank lines
     code = re.sub(r'\n\s*\n', '\n\n', code)
     
     return code.strip()

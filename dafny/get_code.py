@@ -23,7 +23,7 @@ def get_code(filename: str) -> CodeContent:
     methods = find_all_with_positions(method_pattern, content, filename)
     
     # Find non-ghost functions
-    function_pattern = r'(?<!ghost\s)function\s+(?!method\b)(\w+[^{]*{[^}]*})'
+    function_pattern = r'(?<!ghost\s)function\s+\w+\s*\([^)]*\)\s*:[^{]+{(?:[^{}]|{[^{}]*})*}'
     functions = find_all_with_positions(function_pattern, content, filename)
     
     # Filter out functions that use spec-only features

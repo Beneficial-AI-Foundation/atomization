@@ -55,6 +55,9 @@ def atomize_dafny(filename: str) -> dict:
                 "ensures_clauses": [
                     format_code_segment(ens) for ens in spec_content.ensures_clauses
                 ],
+                "reads_clauses": [
+                    format_code_segment(reads) for reads in spec_content.reads_clauses
+                ],
                 "ghost_predicates": [
                     format_code_segment(pred) for pred in spec_content.ghost_predicates
                 ],
