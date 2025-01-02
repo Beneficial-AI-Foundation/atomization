@@ -71,6 +71,24 @@ def collect_elements_by_parent(data: Dict[str, Any]) -> Dict[str | None, List[Lo
         all_parents.append((name, loc.start_line))
         elements_by_parent[name] = [loc]
     
+    # Handle invariant groups
+    for group in data['proof']['invariant_groups']:
+        method_name = group['method']
+        if method_name in elements_by_parent:
+            for inv in group['invariants']:
+                loc = Location(
+                    filename=group['location']['filename'],
+                    start_line=group['location']['start_line'] + inv['offset'],
+                    start_col=group['location']['start_col'],
+                    end_line=group['location']['end_line'],
+                    end_col=group['location']['end_col'],
+                    content=f"invariant {inv['content']}",
+                    parent=method_name,
+                    context='while_loop',
+                    context_content=f"while {group['while_condition']}"
+                )
+                elements_by_parent[method_name].append(loc)
+    
     # Sort parents by line number to maintain original file order
     all_parents.sort(key=lambda x: x[1])
     parent_order = [name for name, _ in all_parents]
@@ -91,10 +109,10 @@ def collect_elements_by_parent(data: Dict[str, Any]) -> Dict[str | None, List[Lo
             if loc.parent and loc.parent in elements_by_parent:
                 elements_by_parent[loc.parent].append(loc)
     
-    for inv in data['proof']['invariants']:
-        loc = parse_location(inv)
-        if loc.parent and loc.parent in elements_by_parent:
-            elements_by_parent[loc.parent].append(loc)
+    # for inv in data['proof']['invariants']:
+    #     loc = parse_location(inv)
+    #     if loc.parent and loc.parent in elements_by_parent:
+    #         elements_by_parent[loc.parent].append(loc)
             
     # Modify the collection of child elements to use both parent and context
     for dec in data['proof']['decreases_clauses']:
@@ -184,11 +202,13 @@ def reconstruct_file(elements_by_parent: Dict[str, List[Location]], parent_order
                 in_while = True
                 reconstructed.append(body_indent + line)
                 
-                # Add invariants
-                for inv in invariants:
-                    if inv.parent == parent_name:
-                        reconstructed.append(indent + inv.content)
-                
+                # Find matching invariant group
+                for group in data['proof']['invariant_groups']:
+                    if (group['method'] == parent_name and 
+                        group['while_condition'] == line.strip().replace('while ', '')):
+                        for inv in group['invariants']:
+                            reconstructed.append(indent + f"invariant {inv['content']}")
+            
                 # Add while loop decreases 
                 for dec in decreases:
                     if (dec.parent == parent_name and 

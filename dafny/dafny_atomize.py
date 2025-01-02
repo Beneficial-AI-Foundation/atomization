@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict
 from get_code import get_code
 from get_specs import get_specs
-from get_proofs import get_proofs
+from get_proofs import get_proofs, InvariantGroup
 from dafny_utils import SourceLocation
 
 def format_code_segment(source_loc: SourceLocation) -> dict:
@@ -69,9 +69,18 @@ def atomize_dafny(filename: str) -> dict:
                 "lemmas": [
                     format_code_segment(lemma) for lemma in proof_content.lemmas
                 ],
-                "invariants": [
-                    format_code_segment(inv) for inv in proof_content.invariants
-                ],
+                "invariant_groups": [
+                   {
+                       "method": group.method_name,
+                       "while_condition": group.while_condition,
+                       "location": group.location,
+                       "invariants": [
+                           {"offset": offset, "content": content} 
+                           for offset, content in group.invariants
+                       ]
+                   }
+                   for group in proof_content.invariants
+               ],
                 "decreases_clauses": [
                     format_code_segment(dec) for dec in proof_content.decreases_clauses
                 ],

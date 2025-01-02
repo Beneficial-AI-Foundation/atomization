@@ -1,7 +1,7 @@
 # get_proofs.py
 import re
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 from dafny_utils import (
     read_dafny_file,
     extract_verification_annotations,
@@ -19,9 +19,30 @@ class ProofContent:
     decreases_clauses: List[SourceLocation]
     assertions: List[SourceLocation]
 
+@dataclass
+class InvariantGroup:
+    method_name: str
+    while_condition: str
+    location: dict  # Location of the first invariant
+    invariants: List[Tuple[int, str]]  # List of (offset, content)
+
+
+def get_invariants_group(content: str, method_start: int, method_end: int) -> List[Tuple[int, str]]:
+   """Get all invariants for a method with their offsets from method start."""
+   invariant_pattern = r'invariant\s+([^{\n]+)'
+   invariants = []
+   
+   for match in re.finditer(invariant_pattern, content):
+       if method_start < match.start() < method_end:
+           offset = match.start() - method_start
+           invariants.append((offset, match.group(1).strip()))
+           
+   return sorted(invariants, key=lambda x: x[0])
+
+
 def get_proofs(filename: str) -> ProofContent:
     content = read_dafny_file(filename)
-    
+    method_invariants = {}
     # Find lemmas
     lemma_pattern = r'lemma\s+\w+[^{]*{(?:[^{}]|{[^{}]*})*}'
     lemmas = []
@@ -33,30 +54,46 @@ def get_proofs(filename: str) -> ProofContent:
         loc.content = stripped_content
         lemmas.append(loc)
     
-    # Find invariants (for methods and loops)
+    # Find method pattern and process invariants separately
+    method_pattern = r'method\s+(\w+)[^{]*{(?:[^{}]|{[^{}]*})*}'
+    for method_match in re.finditer(method_pattern, content, re.DOTALL):
+        method_name = method_match.group(1)
+        method_content = method_match.group(0)
+        
+        # Find while condition before invariants
+        while_pattern = r'while\s+([^{\n]+)'
+        while_match = re.search(while_pattern, method_content)
+        while_condition = while_match.group(1) if while_match else None
+        
+        # Get invariants for this method
+        invs = get_invariants_group(content, method_match.start(), method_match.end())
+        if invs:
+            first_inv_loc = get_location(content, method_match.start(), method_match.end(), filename)
+            method_invariants[method_name] = InvariantGroup(
+                method_name=method_name,
+                while_condition=while_condition,
+                location=first_inv_loc.__dict__,
+                invariants=invs
+            )
+
+    # Process individual invariant locations
     invariant_pattern = r'invariant\s+([^{\n]+)'
-    # invariants = find_all_with_positions(invariant_pattern, content, filename)
     invariants = []
+    current_method = None
 
     for match in re.finditer(invariant_pattern, content):
         # Get the full location
         loc = get_location(content, match.start(), match.end(), filename)
         
-        # Determine the context of the invariant
-        pre_content = content[:match.start()]
-        
         # Find the current method
-        method_pattern = r'method\s+(\w+)[^{]*{(?:[^{}]|{[^{}]*})*}'
-        current_method = None
         for method_match in re.finditer(method_pattern, content, re.DOTALL):
             if match.start() > method_match.start() and match.start() < method_match.end():
                 current_method = method_match.group(1)
                 break
         
         # Find the specific while loop containing this invariant
-        while_condition_pattern = r'while\s+([^{\n]+)'
         context_content = None
-        
+        while_condition_pattern = r'while\s+([^{\n]+)'
         for while_match in re.finditer(while_condition_pattern, content):
             if match.start() > while_match.start():
                 context_content = f"while {while_match.group(1).strip()}"
@@ -157,7 +194,7 @@ def get_proofs(filename: str) -> ProofContent:
     
     return ProofContent(
         lemmas=lemmas,
-        invariants=invariants,
+        invariants=list(method_invariants.values()),
         decreases_clauses=decreases_clauses,
         assertions=assertions
     )
