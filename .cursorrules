@@ -1,0 +1,15 @@
+# atomization
+
+## Lean 4 Atomizer
+
+Goal: Extract all the transitive imports of a Lean definition. The information is stored in the `InfoTree` of the definition.
+
+Extract line/column information for each definition (or just the syntax)
+
+Then, split into spec (type signatures) and code (definition body). If the spec is `Prop`-valued, then the code is a proof.
+
+### Ideas
+
+- [ ] Try `fileMap`
+- [ ] Try `nameMap`
+
