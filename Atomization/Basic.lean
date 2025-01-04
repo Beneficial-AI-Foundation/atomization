@@ -36,3 +36,26 @@ def fibImperative (n: Nat) : Nat := Id.run do
 @[csimp]
 theorem fib_spec : @fib = @fibImperative := by
   sorry
+
+class inductive InductiveTest
+| A
+| B : InductiveTest
+| C (x : InductiveTest)
+| D (n : Nat)
+deriving Repr
+
+def trivial' : Nat := 1
+def trivial'' : Nat := 1 + 1 - 1
+theorem trivial_eq : trivial' = trivial'' := by rfl
+
+mutual
+
+  def even : Nat → Bool
+  | 0 => true
+  | n + 1 => odd n
+
+  def odd : Nat → Bool
+  | 0 => false
+  | n + 1 => even n
+
+end
