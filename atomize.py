@@ -14,7 +14,8 @@ type Name = str
 # type Kind = Literal["def", "theorem", "lemma", "example", "structure", "class", "abbrev"]
 # TODO: Add more kinds
 type Kind = Literal["def", "theorem"]
-EXCLUDED_NAMESPACES = ("Init", "Core", "Lean")
+# 
+EXCLUDED_NAMESPACES = ("Init", "Core", "Lean", "Mathlib")
 @dataclass
 class AtomizedDef:
     """A single atomized definition with its dependencies and source code"""
@@ -25,6 +26,8 @@ class AtomizedDef:
     type_dependencies: Set[Name] = field(default_factory=set)
     value_dependencies: Set[Name] = field(default_factory=set)
     kind: Optional[Kind] = None 
+    ref_spec: Optional[str] = None
+
     def __hash__(self) -> int:
         return hash(self.name)
     def __eq__(self, other: Any) -> bool:
@@ -37,9 +40,13 @@ def is_builtin(name: Name, server: Server, exclude_namespaces: Sequence[str] = E
     module_parts = module_name.split(".")
     return module_parts[0] in exclude_namespaces
 
-def extract_kind(name: Name, server: Server) -> Optional[Kind]:
+def extract_kind(name: Name, server: Server, inspect_cache: Optional[Dict[str, dict]] = None) -> Optional[Kind]:
     """Extract the kind of definition (def/theorem/etc) from source"""
-    type_info: str = server.env_inspect(name=name,print_value=True,print_dependency=True)['type']
+    if inspect_cache and name in inspect_cache:
+        type_info = inspect_cache[name]['type']['pp']
+    else:
+        type_info = server.env_inspect(name=name,print_value=True,print_dependency=True)['type']['pp']
+    
     type = server.expr_type(type_info)
     if type == "Prop":
         return "theorem"
@@ -51,53 +58,68 @@ def atomize_file(server: Server, exclude_namespaces: Sequence[str] = EXCLUDED_NA
     """
     Atomize a Lean file into its individual sub definitions using Pantograph's env.inspect
     and extract their dependencies recursively.
-
-    Args:
-        server: Pantograph server instance
-        exclude_namespaces: Namespaces to exclude from dependencies
-
-    Returns:
-        List of AtomizedDef containing definition info and dependencies
-    
-    Raises:
-        RuntimeError: If unable to communicate with server or parse file
     """
+    # Get project root from server
+    project_root = Path(server.project_path)
 
-    # 1) First get the catalog of all definitions in the file
-    raw_catalog: dict[str, Any] = server.run("env.catalog", {})
-    try:
-        catalog: list[Name] = raw_catalog['result']
-    except Exception as e:
-        raise RuntimeError(f"Failed to extract from {raw_catalog}") from e
-
-        
-    # 2) For each definition, get its detailed info and dependencies if its not builtin
-    symbols: list[Name] = []
+    # First pass: Get all definitions and their basic info
+    catalog = server.run("env.catalog", {})['symbols']
+    print(f"Catalog length: {len(catalog)}")
     
-    # 3) For each symbol, get its type, value, and dependencies
-    atomized_defs: list[AtomizedDef] = []
+    # Filter and unmangle symbols first
+    filtered_symbols = []
+    inspect_cache: Dict[str, dict] = {}  # Cache env.inspect results
+    
     for symbol in catalog:
-        # Get detailed info including dependencies
-        info = server.env_inspect(name=symbol, print_value=True, print_dependency=True)
-        
-        # Extract type and source code
+        symbol = symbol[1:]  # TODO: improve unmangling
+        try:
+            # Cache inspect results as we filter
+            info = server.env_inspect(name=symbol, print_value=True, print_dependency=True)
+            inspect_cache[symbol] = info
+            
+            symbol_parts = symbol.split(".")
+            if symbol_parts[0] not in EXCLUDED_NAMESPACES:
+                filtered_symbols.append(symbol)
+        except pantograph.ServerError as e:
+            print(f"Warning: Failed to inspect {symbol}: {e}")
+            continue
+    
+    # Second pass: Get source files for all modules
+    source_cache: Dict[str, tuple[str, str]] = {}  # module path -> (file name, contents)
+    module_paths = set()
+    
+    # Collect module paths from cached inspect results
+    for symbol in filtered_symbols:
+        info = inspect_cache[symbol]
+        module_path = info.get('module', '')
+        if module_path and module_path.split(".")[0] not in exclude_namespaces:
+            module_paths.add(module_path)
+    
+    # Load all source files
+    for module_path in module_paths:
+        source_file = find_source_file(module_path, project_root)
+        if source_file:
+            source_cache[module_path] = (source_file.name, source_file.read_text())
+        else:
+            source_cache[module_path] = ("", "")
+            print(f"Warning: Could not find source file for module {module_path}")
+    
+    # Final pass: Create AtomizedDefs using cached inspect results
+    atomized_defs: list[AtomizedDef] = []
+    for symbol in filtered_symbols:
+        info = inspect_cache[symbol]
+        module_path = info.get('module', '')
+        if not module_path or module_path not in source_cache:
+            continue
+            
+        # Extract definition info
         type_info = info.get('type', {}).get('pp', '')
         source = info.get('value', {}).get('pp', '')
-        module_path = info.get('module', '')
-        def is_builtin() -> bool:
-            module_parts = module_path.split(".")
-            return module_parts[0] in EXCLUDED_NAMESPACES
-        # Skip builtins
-        if is_builtin():
-            continue
-        # Extract dependencies
         type_deps = list(set(info.get('typeDependency', [])))
         value_deps = list(set(info.get('valueDependency', [])))
+        kind = extract_kind(symbol, server)  # Still need this call since it uses expr_type
         
-        # Determine if it's a theorem by checking if type is Prop
-        kind: Optional[Kind] = extract_kind(symbol, server)
-        
-        atomized_def = AtomizedDef(
+        atom = AtomizedDef(
             name=symbol,
             source=source,
             type=type_info,
@@ -106,10 +128,35 @@ def atomize_file(server: Server, exclude_namespaces: Sequence[str] = EXCLUDED_NA
             value_dependencies=set(value_deps),
             kind=kind
         )
-        atomized_defs.append(atomized_def)
+        
+        # Add ref spec if it exists in the source
+        add_ref_spec(atom, source_cache, atomized_defs)
+        atomized_defs.append(atom)
 
     return atomized_defs
 
+def add_ref_spec(atom: AtomizedDef, source_cache: Dict[str, tuple[str, str]], all_atoms: list[AtomizedDef]) -> AtomizedDef:
+    """Mutably add a reference specification to an atomized definition."""
+    csimp_pattern = r'@\[csimp\]\s*theorem\s+(\w+)\s*:\s*@?(\w+)\s*=\s*@?(\w+)\s*:='
+    
+    # Find all @[csimp] theorems in the source
+    _, source_code = source_cache[atom.module_path]
+    for match in re.finditer(csimp_pattern, source_code):
+        theorem_name = match.group(1)
+        first_name = match.group(2)
+        second_name = match.group(3)
+        
+        # If either side matches our atom's name
+        if first_name == atom.name or second_name == atom.name:
+            atom.ref_spec = theorem_name
+            # Also add ref spec to the other definition if it exists
+            other_name = second_name if first_name == atom.name else first_name
+            other_atom = next((a for a in all_atoms if a.name == other_name), None)
+            if other_atom:
+                other_atom.ref_spec = theorem_name
+            break  # Take first matching ref spec
+            
+    return atom
 
 def find_def(atom: AtomizedDef|Name, all_atoms: list[AtomizedDef]) -> AtomizedDef:
     if isinstance(atom, AtomizedDef):
@@ -160,8 +207,9 @@ def de_atomize(def_atom: AtomizedDef, all_atoms: list[AtomizedDef], server: Serv
     out += deserialize_decl(def_atom) + "\n"
 
     return out
+
     
-def test_atomizer():
+def test_atomizer() -> None:
     """Test the atomizer functionality using example definitions
     The code in question is in `Atomization/Basic.lean`:
     
@@ -227,9 +275,43 @@ def test_atomizer():
     assert "f" in f2_def.type_dependencies
     assert "f" in f2_def.value_dependencies
     
+    # Test ref spec for fib and fibImperative
+    fib_def = find_def("fib", all_atoms)
+    fib_imp_def = find_def("fibImperative", all_atoms)
+    print(f"fib def: {fib_def}")
+    print(f"fibImperative def: {fib_imp_def}")
+    
+    # Both should have fib_spec as their ref spec
+    assert fib_def.ref_spec == "fib_spec", f"Expected fib ref_spec to be 'fib_spec', got {fib_def.ref_spec}"
+    assert fib_imp_def.ref_spec == "fib_spec", f"Expected fibImperative ref_spec to be 'fib_spec', got {fib_imp_def.ref_spec}"
+    
+    # Test that non-ref spec functions don't have a ref spec
+    g_def = find_def("g", all_atoms)
+    assert g_def.ref_spec is None, f"Expected g ref_spec to be None, got {g_def.ref_spec}"
+    
     print("All tests passed!")
+
+def find_source_file(module_path: str, project_root: Path) -> Optional[Path]:
+    """Find the source file for a given module path in the project.
+    
+    Args:
+        module_path: Module path like "Atomization.Basic"
+        project_root: Root directory of the project
+        
+    Returns:
+        Path to the source file or None if not found
+    """
+    # Convert module path to file path (e.g. "Atomization.Basic" -> "Atomization/Basic.lean")
+    relative_path = Path(module_path.replace(".", "/") + ".lean")
+    source_path = project_root / relative_path
+    
+    if source_path.exists():
+        return source_path
+    return None
 
 if __name__ == "__main__":
     test_atomizer()
 
     
+
+# %%
