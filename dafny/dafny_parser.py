@@ -1,13 +1,30 @@
-# dafny_parser.py
 import sys
 import json
 from typing import List, Dict
 
+def collect_until_closing_brace(lines: List[str], start_idx: int) -> tuple[str, int]:
+    brace_count = 0
+    chunk = []
+    i = start_idx
+    
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+            
+        chunk.append(line)
+        brace_count += line.count('{')
+        brace_count -= line.count('}')
+        
+        if brace_count == 0 and '{' in ''.join(chunk):
+            return ' '.join(chunk), i + 1
+        i += 1
+    return ' '.join(chunk), i
+
 def parse_dafny(content: str) -> List[Dict[str, str]]:
     lines = content.split('\n')
     chunks = []
-    current_chunk = ''
-    brace_count = 0
     chunk_order = 0
     i = 0
     
@@ -16,110 +33,88 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
         if not line:
             i += 1
             continue
-            
-        # Ghost functions/predicates or lemmas
+
         if line.startswith(('ghost', 'lemma')):
-            if current_chunk:
-                chunks.append({
-                    'content': current_chunk.strip(),
-                    'type': 'code' if 'method' in current_chunk else 'spec',
-                    'order': chunk_order
-                })
-                chunk_order += 1
-                current_chunk = ''
-                
-            current_chunk = line
-            brace_count = line.count('{')
-            i += 1
-            
-            while i < len(lines) and (brace_count > 0 or '{' not in current_chunk):
-                line = lines[i].strip()
-                if line:
-                    current_chunk += ' ' + line
-                    brace_count += line.count('{')
-                    brace_count -= line.count('}')
-                i += 1
-                
+            chunk, i = collect_until_closing_brace(lines, i)
             chunks.append({
-                'content': current_chunk.strip(),
-                'type': 'spec' if line.startswith('ghost') else 'proof',
+                'content': chunk,
+                'type': 'proof' if line.startswith('lemma') else 'spec',
                 'order': chunk_order
             })
             chunk_order += 1
-            current_chunk = ''
             continue
 
-        # Methods
         if line.startswith('method'):
-            current_chunk = line
-            i += 1
-            
             # Collect method signature and specs
-            while i < len(lines) and '{' not in line:
+            spec = []
+            while i < len(lines):
                 line = lines[i].strip()
-                if line:
-                    current_chunk += ' ' + line
+                if not line:
+                    i += 1
+                    continue
+                if '{' in line:
+                    spec.append(line[:line.index('{')])
+                    break
+                spec.append(line)
                 i += 1
-            
+                
             chunks.append({
-                'content': current_chunk.strip(),
+                'content': ' '.join(spec),
                 'type': 'spec',
                 'order': chunk_order
             })
             chunk_order += 1
             
-            if not line:
+            if not line or '{' not in line:
                 continue
                 
-            # Start collecting method body
-            current_chunk = line
-            brace_count = 1
+            # Process method body
+            current_chunk = line[line.index('{'):]
+            brace_count = current_chunk.count('{')
+            method_chunks = []
             
             while i < len(lines) and brace_count > 0:
-                line = lines[i].strip()
-                if line:
-                    if 'invariant' in line or 'decreases' in line:
-                        if current_chunk.strip():
-                            chunks.append({
-                                'content': current_chunk.strip(),
-                                'type': 'code',
-                                'order': chunk_order
-                            })
-                            chunk_order += 1
-                        current_chunk = line
-                        while i + 1 < len(lines) and ('invariant' in lines[i+1].strip() or 'decreases' in lines[i+1].strip()):
-                            i += 1
-                            current_chunk += ' ' + lines[i].strip()
-                        chunks.append({
-                            'content': current_chunk.strip(),
-                            'type': 'proof',
-                            'order': chunk_order
-                        })
-                        chunk_order += 1
-                        current_chunk = ''
-                    else:
-                        current_chunk += ' ' + line
-                        brace_count += line.count('{')
-                        brace_count -= line.count('}')
                 i += 1
+                if i >= len(lines):
+                    break
+                    
+                line = lines[i].strip()
+                if not line:
+                    continue
+                    
+                if 'invariant' in line or 'decreases' in line:
+                    if current_chunk.strip():
+                        method_chunks.append(('code', current_chunk.strip()))
+                    
+                    proof_lines = [line]
+                    while i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        if not ('invariant' in next_line or 'decreases' in next_line):
+                            break
+                        proof_lines.append(next_line)
+                        i += 1
+                    
+                    method_chunks.append(('proof', ' '.join(proof_lines)))
+                    current_chunk = ''
+                    continue
+                
+                current_chunk += ' ' + line
+                brace_count += line.count('{')
+                brace_count -= line.count('}')
+                
+                if brace_count == 0:
+                    if current_chunk.strip():
+                        method_chunks.append(('code', current_chunk.strip()))
             
-            if current_chunk.strip():
+            for chunk_type, chunk_content in method_chunks:
                 chunks.append({
-                    'content': current_chunk.strip(),
-                    'type': 'code',
+                    'content': chunk_content,
+                    'type': chunk_type,
                     'order': chunk_order
                 })
                 chunk_order += 1
-            current_chunk = ''
             continue
             
         i += 1
-    
-    if current_chunk:
-        chunks.append({
-            'content': current_chunk.strip(),
-            'type': 'code' if 'method' in current_chunk else 'spec',
-            'order': chunk_order
-        })
-    
+        
     return chunks

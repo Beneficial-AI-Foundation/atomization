@@ -120,7 +120,8 @@ lemma FibIsNonNegative(n: int)
             'proof': [{'content': chunk['content'], 'order': chunk['order']}
                     for chunk in parsed_chunks if chunk['type'] == 'proof']
         }
-        print(result)
+        import pprint
+        pprint.pprint(result)
         return result
     except Exception as e:
         raise Exception(f"Error analyzing Dafny content: {str(e)}")
