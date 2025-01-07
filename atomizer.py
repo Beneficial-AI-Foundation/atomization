@@ -3,6 +3,7 @@ from mysql.connector import Error
 import logging
 import os
 import sys
+from pprint import pprint
 
 from dafny.dafny_parser import parse_dafny
 
@@ -116,6 +117,6 @@ if __name__ == "__main__":
                     'proof': [{'content': chunk['content'], 'order': chunk['order']}
                             for chunk in parsed_chunks if chunk['type'] == 'proof']
                 }
-                print(result)
+                pprint(result)
         except ValueError:
             print("Please provide either 'test' or a valid integer ID")
