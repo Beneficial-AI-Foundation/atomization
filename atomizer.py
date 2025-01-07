@@ -149,9 +149,9 @@ def create_snippets(package_id: int, parsed_chunks: list):
 
             # Map chunk types to type_ids
             type_map = {
-                'spec': 2,  # Based on the image showing spec entries with type_id 2
-                'code': 3,  # Based on code entries with type_id 3
-                'proof': 1  # Assuming proofs use type_id 1
+                'spec': 1,  # Assuming spec entries with type_id 1
+                'code': 2,  # Assuming code entries with type_id 2
+                'proof': 3  # Assuming proofs use type_id 3
             }
 
             insert_query = """

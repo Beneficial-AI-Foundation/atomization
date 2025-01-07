@@ -6,26 +6,41 @@ def get_indentation(line: str) -> int:
     return len(line) - len(line.lstrip())
 
 def join_lines_with_indentation(lines: List[Tuple[str, int]]) -> str:
-    return '\n'.join(' ' * indent + line.strip() for line, indent in lines if line.strip())
+    result = []
+    for line, indent in lines:
+        if not line.strip():
+            result.append('')  # Preserve empty lines
+        else:
+            result.append(' ' * indent + line.strip())
+    return '\n'.join(result) + '\n'  # Add final newline
 
 def collect_until_closing_brace(lines: List[str], start_idx: int) -> tuple[str, int]:
     brace_count = 0
     chunk = []
     i = start_idx
+    empty_lines_after = 0
     
     while i < len(lines):
         line = lines[i]
         if not line.strip():
+            if brace_count == 0 and '{' in ''.join(l[0] for l in chunk):
+                empty_lines_after += 1
+                if empty_lines_after > 1:  # Found two consecutive empty lines
+                    break
+            else:
+                chunk.append(('', get_indentation(line)))
             i += 1
             continue
             
+        empty_lines_after = 0
         indentation = get_indentation(line)
         chunk.append((line.strip(), indentation))
         brace_count += line.strip().count('{')
         brace_count -= line.strip().count('}')
         
         if brace_count == 0 and '{' in ''.join(l[0] for l in chunk):
-            return join_lines_with_indentation(chunk), i + 1
+            i += 1
+            break
         i += 1
     return join_lines_with_indentation(chunk), i
 
