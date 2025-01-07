@@ -70,15 +70,62 @@ def get_code_entry(code_id: int):
             if code:
                 if code['package_id'] is not None:
                     print(f"Note: This code is package {code['package_id']}")
+                    return None, code['package_id']
                 if code['text'] is None:
                     print(f"No content found for code ID {code_id}")
-                    return None
+                    return None, None
                 print(f"Note: This is the content: {code['text']}")
-                return code['text']
+                return code['text'], None
             else:
                 print(f"No code found with ID {code_id}")
+                return None, None
+            
+    except Error as e:
+        logger.error(f"Database error: {e}")
+        return None, None
+
+def create_package_entry(code_id: int):
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM codes WHERE id = %s", (code_id,))
+            original_code = cursor.fetchone()
+            
+            if not original_code:
+                logger.error(f"No code found with ID {code_id}")
                 return None
             
+            description = None
+            if original_code.get('summary') and original_code.get('description'):
+                description = f"{original_code['summary']}: {original_code['description']}"
+            elif original_code.get('summary'):
+                description = original_code['summary']
+            elif original_code.get('description'):
+                description = original_code['description']
+            
+            insert_query = """
+            INSERT INTO packages 
+            (code_id, language_id, description, url, timestamp, name)
+            VALUES (%s, %s, %s, %s, NOW(), %s)
+            """
+            
+            cursor.execute(insert_query, (
+                code_id,
+                1,
+                description,
+                original_code.get('url'),
+                original_code.get('filename')
+            ))
+            
+            package_id = cursor.lastrowid
+            
+            # Update codes table with new package_id
+            cursor.execute("UPDATE codes SET package_id = %s WHERE id = %s", 
+                         (package_id, code_id))
+            
+            conn.commit()
+            logger.info(f"Created package with ID {package_id}")
+            return package_id
     except Error as e:
         logger.error(f"Database error: {e}")
         return None
@@ -95,15 +142,89 @@ def atomize_dafny(content: str) -> dict:
         print(f"Debug - Exception details: {type(e).__name__}: {str(e)}")
         raise Exception(f"Error analyzing {content}: {str(e)}")
 
+def create_snippets(package_id: int, parsed_chunks: list):
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+
+            # Map chunk types to type_ids
+            type_map = {
+                'spec': 2,  # Based on the image showing spec entries with type_id 2
+                'code': 3,  # Based on code entries with type_id 3
+                'proof': 1  # Assuming proofs use type_id 1
+            }
+
+            insert_query = """
+            INSERT INTO snippets 
+            (package_id, language_id, type_id, text, sortorder, timestamp)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            """
+            
+            for chunk in parsed_chunks:
+                cursor.execute(insert_query, (
+                    package_id,
+                    1,  # language_id for Dafny
+                    type_map[chunk['type']],
+                    chunk['content'],
+                    chunk['order']
+                ))
+
+            conn.commit()
+            logger.info(f"Created snippets for package {package_id}")
+            return True
+            
+    except Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+    
+def delete_package_and_cleanup(package_id: int):
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get code_id for the package
+            cursor.execute("SELECT code_id FROM packages WHERE id = %s", (package_id,))
+            package = cursor.fetchone()
+            if not package:
+                logger.error(f"No package found with ID {package_id}")
+                return False
+                
+            # Update code.package_id to NULL
+            cursor.execute("UPDATE codes SET package_id = NULL WHERE id = %s", 
+                         (package['code_id'],))
+                
+            # Delete snippets 
+            cursor.execute("DELETE FROM snippets WHERE package_id = %s", (package_id,))
+            
+            # Delete package
+            cursor.execute("DELETE FROM packages WHERE id = %s", (package_id,))
+            
+            conn.commit()
+            logger.info(f"Successfully deleted package {package_id} and related entries")
+            return True
+            
+    except Error as e:
+        logger.error(f"Database error: {e}")
+        return False
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        get_code_entry(1)
+        print(f'Usage: python atomizer.py <code id>')
+        print(f'Usage: python atomizer.py delete <package_id>')
     elif sys.argv[1] == "test":
         test_connection()
+    elif sys.argv[1] == "delete" and len(sys.argv) == 3:
+        print(f'Deleting package {sys.argv[2]}')
+        # run delete_package_and_cleanup
+        package_id = int(sys.argv[2])
+        if delete_package_and_cleanup(package_id):
+            logger.info(f"Successfully deleted package {package_id}")
+        
     else:
         try:
             code_id = int(sys.argv[1])
-            content = get_code_entry(code_id)
+            content, package_id = get_code_entry(code_id)
 
             if content is not None:
                 decoded_content = content.decode('utf-8')
@@ -118,5 +239,20 @@ if __name__ == "__main__":
                             for chunk in parsed_chunks if chunk['type'] == 'proof']
                 }
                 pprint(result)
+                
+                # Create package entry
+                package_id = create_package_entry(code_id)
+                if package_id:
+                    logger.info(f"Successfully created package with ID {package_id}")
+                    # Create snippets entries
+                    if create_snippets(package_id, parsed_chunks):
+                        logger.info("Successfully created snippets")
+                    else:
+                        logger.error("Failed to create snippets")
+                else:
+                    logger.error("Failed to create package entry")
+            else:
+                print(f'Package already exists: {package_id}')
+                    
         except ValueError:
             print("Please provide either 'test' or a valid integer ID")
