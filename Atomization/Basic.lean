@@ -1,3 +1,6 @@
+import Mathlib.Tactic.Ring
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.FieldSimp
 -- import Lean.Meta
 
 def g := 1
@@ -59,3 +62,42 @@ mutual
   | n + 1 => even n
 
 end
+
+
+
+def sumUpTo (n : Nat) : Nat := match n with
+  | 0 => 0
+  | n+1 => n + 1 + sumUpTo n
+
+def fastSumUpTo (n : Nat) : Nat := n * (n + 1) / 2
+
+theorem splitFastSum (n : Nat) : fastSumUpTo (n+1) = n + 1 + fastSumUpTo n := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    unfold fastSumUpTo
+    ring_nf
+    #leansearch "mul both sides."
+    sorry
+
+    -- calc
+    --   (n + 1) * (n + 2) / 2
+    --     = (n + 1) + n * (n + 1) / 2 := by ring_nf
+    --   _ = (n + 1) + fastSumUpTo n := by rw [ih]
+
+
+
+theorem splitSum (n : Nat) : sumUpTo (n + 1) = n + 1 + sumUpTo n := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    simp [sumUpTo]
+
+
+theorem sumUpTo_eq_fastSumUpTo (n : Nat) : sumUpTo n = fastSumUpTo n := by
+  induction n with
+  | zero => rfl
+  | succ n ih => calc
+    sumUpTo (n + 1) = n + 1 + sumUpTo n := splitSum n
+    _ = n + 1 + fastSumUpTo n := by rw [ih]
+    _ = fastSumUpTo (n + 1) := by splitFastSum (n+1)
