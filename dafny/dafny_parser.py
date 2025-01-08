@@ -87,7 +87,7 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
                     continue
                 if '{' in line:
                     break
-                if any(x in line for x in ['requires', 'ensures', 'decreases']):
+                if any(x in line for x in ['requires', 'ensures', 'decreases', 'reads', 'modifies']):
                     spec.append((line.strip(), get_indentation(line)))
                     i += 1
                     continue
