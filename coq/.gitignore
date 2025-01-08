@@ -3,3 +3,5 @@
 .venv/
 *.vo
 __pycache__/
+.lia.cache
+.nia.cache
