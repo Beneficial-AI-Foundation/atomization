@@ -66,8 +66,8 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
             chunk_order += 1
             continue
 
-        if line.strip().startswith('method'):
-            # Collect method signature and specs
+        if line.strip().startswith(('method', 'function')):
+            # Collect method/function signature and specs
             spec = []
             base_indent = get_indentation(line)
             while i < len(lines):
@@ -91,10 +91,10 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
             if not line or '{' not in line:
                 continue
                 
-            # Process method body
+            # Process method/function body
             current_chunk = [(line[line.index('{'):].strip(), get_indentation(line))]
             brace_count = current_chunk[0][0].count('{')
-            method_chunks = []
+            code_chunks = []
             
             while i < len(lines) and brace_count > 0:
                 i += 1
@@ -108,7 +108,7 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
                 current_indent = get_indentation(line)
                 if 'invariant' in line.strip() or 'decreases' in line.strip():
                     if current_chunk:
-                        method_chunks.append(('code', join_lines_with_indentation(current_chunk)))
+                        code_chunks.append(('code', join_lines_with_indentation(current_chunk)))
                     
                     proof_lines = [(line.strip(), current_indent)]
                     while i + 1 < len(lines):
@@ -121,7 +121,7 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
                         proof_lines.append((next_line.strip(), get_indentation(next_line)))
                         i += 1
                     
-                    method_chunks.append(('proof', join_lines_with_indentation(proof_lines)))
+                    code_chunks.append(('proof', join_lines_with_indentation(proof_lines)))
                     current_chunk = []
                     continue
                 
@@ -131,9 +131,9 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
                 
                 if brace_count == 0:
                     if current_chunk:
-                        method_chunks.append(('code', join_lines_with_indentation(current_chunk)))
+                        code_chunks.append(('code', join_lines_with_indentation(current_chunk)))
             
-            for chunk_type, chunk_content in method_chunks:
+            for chunk_type, chunk_content in code_chunks:
                 chunks.append({
                     'content': chunk_content,
                     'type': chunk_type,

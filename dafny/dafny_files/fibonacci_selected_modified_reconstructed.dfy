@@ -1,6 +1,7 @@
 ghost function fibonacci(n: int): int
    requires n >= 0
    decreases n
+   ensures fibonacci(n) >= 0
 {
   if n == 0 then 0
   else if n == 1 then 1
@@ -32,6 +33,15 @@ method fib_method(n: int) returns (result: int)
   result := a;
 }
 
+function fibonacci2(n: int): int
+   requires n >= 0
+   decreases n
+   ensures fibonacci2(n) == fibonacci(n)
+{
+  if n == 0 then 0
+  else if n == 1 then 1
+  else fibonacci2(n-1) + fibonacci2(n-2)
+}
 
 
 ghost function FibNonNegative(n: int): bool

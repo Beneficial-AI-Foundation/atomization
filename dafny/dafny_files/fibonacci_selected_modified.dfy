@@ -1,6 +1,7 @@
 ghost function fibonacci(n: int): int
   requires n >= 0
   decreases n
+  ensures fibonacci(n) >= 0
 {
   if n == 0 then 0
   else if n == 1 then 1
