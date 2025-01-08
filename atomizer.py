@@ -151,7 +151,8 @@ def create_snippets(package_id: int, parsed_chunks: list):
             type_map = {
                 'spec': 1,  # Assuming spec entries with type_id 1
                 'code': 2,  # Assuming code entries with type_id 2
-                'proof': 3  # Assuming proofs use type_id 3
+                'proof': 3,  # Assuming proofs use type_id 3
+                'spec+code': 4  # For method/function headers use type_id 4
             }
 
             insert_query = """
@@ -236,7 +237,9 @@ if __name__ == "__main__":
                     'code': [{'content': chunk['content'], 'order': chunk['order']}
                             for chunk in parsed_chunks if chunk['type'] == 'code'],
                     'proof': [{'content': chunk['content'], 'order': chunk['order']}
-                            for chunk in parsed_chunks if chunk['type'] == 'proof']
+                            for chunk in parsed_chunks if chunk['type'] == 'proof'],
+                    'spec+code': [{'content': chunk['content'], 'order': chunk['order']}
+                            for chunk in parsed_chunks if chunk['type'] == 'spec+code']
                 }
                 pprint(result)
                 

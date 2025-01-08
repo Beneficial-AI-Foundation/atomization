@@ -66,34 +66,44 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
             chunk_order += 1
             continue
 
-        if line.strip().startswith(('method', 'function')):
-            # Collect method/function signature and specs
+        if line.strip().startswith(('method', 'function')) and not line.strip().startswith('ghost'):
+            # Get the method/function signature
+            signature = [(line.strip(), get_indentation(line))]
+            i += 1
+            
+            chunks.append({
+                'content': join_lines_with_indentation(signature),
+                'type': 'spec+code',
+                'order': chunk_order
+            })
+            chunk_order += 1
+            
+            # Collect specs (requires/ensures/decreases)
             spec = []
-            base_indent = get_indentation(line)
             while i < len(lines):
                 line = lines[i]
                 if not line.strip():
                     i += 1
                     continue
                 if '{' in line:
-                    spec.append((line[:line.index('{')].strip(), get_indentation(line)))
                     break
-                spec.append((line.strip(), get_indentation(line)))
+                if any(x in line for x in ['requires', 'ensures', 'decreases']):
+                    spec.append((line.strip(), get_indentation(line)))
+                    i += 1
+                    continue
                 i += 1
                 
-            chunks.append({
-                'content': join_lines_with_indentation(spec),
-                'type': 'spec',
-                'order': chunk_order
-            })
-            chunk_order += 1
+            if spec:
+                chunks.append({
+                    'content': join_lines_with_indentation(spec),
+                    'type': 'spec',
+                    'order': chunk_order
+                })
+                chunk_order += 1
             
-            if not line or '{' not in line:
-                continue
-                
             # Process method/function body
-            current_chunk = [(line[line.index('{'):].strip(), get_indentation(line))]
-            brace_count = current_chunk[0][0].count('{')
+            current_chunk = [(line.strip(), get_indentation(line))]
+            brace_count = line.count('{')
             code_chunks = []
             
             while i < len(lines) and brace_count > 0:
@@ -126,8 +136,8 @@ def parse_dafny(content: str) -> List[Dict[str, str]]:
                     continue
                 
                 current_chunk.append((line.strip(), current_indent))
-                brace_count += line.strip().count('{')
-                brace_count -= line.strip().count('}')
+                brace_count += line.count('{')
+                brace_count -= line.count('}')
                 
                 if brace_count == 0:
                     if current_chunk:
