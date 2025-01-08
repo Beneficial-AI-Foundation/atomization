@@ -4,15 +4,21 @@ import logging
 import os
 import sys
 from pprint import pprint
-
-from dafny.dafny_parser import parse_dafny
-
+from dafny.dafny_atomizer import atomize_dafny
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # read environment variable DB_PASS in
 db_pass = os.environ.get("DB_PASS", None)
+
+languages = {
+    1: 'dafny',
+    2: 'lean',
+    3: 'coq',
+    4: 'isabelle',
+    5: 'metamath'
+}
 
 class DBConnection:
     def __init__(self, host="localhost", user="root", password=db_pass, database="verilib"):
@@ -83,6 +89,21 @@ def get_code_entry(code_id: int):
     except Error as e:
         logger.error(f"Database error: {e}")
         return None, None
+    
+def get_code_language_id(code_id: int):
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT language_id FROM codes WHERE id = %s", (code_id,))
+            code = cursor.fetchone()
+            if code:
+                return code['language_id']
+            else:
+                logger.error(f"No code found with ID {code_id}")
+                return None
+    except Error as e:
+        logger.error(f"Database error: {e}")
+        return None
 
 def create_package_entry(code_id: int):
     try:
@@ -129,18 +150,6 @@ def create_package_entry(code_id: int):
     except Error as e:
         logger.error(f"Database error: {e}")
         return None
-
-def atomize_dafny(content: str) -> dict:
-    """Analyze a Dafny file and return its code, spec, and proof components."""
-    try:
-
-        parsed_dafny = parse_dafny(content)
-        return parsed_dafny
-        
-       
-    except Exception as e:
-        print(f"Debug - Exception details: {type(e).__name__}: {str(e)}")
-        raise Exception(f"Error analyzing {content}: {str(e)}")
 
 def create_snippets(package_id: int, parsed_chunks: list):
     try:
@@ -229,7 +238,13 @@ if __name__ == "__main__":
 
             if content is not None:
                 decoded_content = content.decode('utf-8')
-                parsed_chunks = atomize_dafny(decoded_content)
+                # Check language ID
+                if get_code_language_id(code_id) == 1:
+                    parsed_chunks = atomize_dafny(decoded_content)
+                    print(f"Atomizing Dafny code with ID {code_id}")
+                else:
+                    print(f"Language not supported yet")
+                    sys.exit(1)
         
                 result = {
                     'spec': [{'content': chunk['content'], 'order': chunk['order']} 

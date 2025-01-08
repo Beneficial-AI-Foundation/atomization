@@ -38,40 +38,15 @@ Proof elements demonstrate program correctness:
 
 ### Atomize
 ```base
-python dafny_atomize.py /path/to/dafny/file.dfy
+python atomize.py <code_id>
 ```
 
-Produces a JSON file containing all elements with their locations and relationships.
+Creates a package corresponding to the code and atomizes it into snippets.
 
-
-### Deatomize
+### Clean up DB
 ```base
-python dafny_deatomize.py /path/to/atomized/analysis.json
+python atomize.py delete <package_id>
 ```
 
-Recreates a valid Dafny file maintaining all code, spec, and proof relationships.
+Deletes the package with `package_id`, finds the code it belongs to and nullifies that code's `package_id` value, and deletes the atomized snippets with that `package_id`
 
-## JSON Structure
-
-```json
-{
-  "code": {
-    "methods": [...],
-    "executable_functions": [...]
-  },
-  "spec": {
-    "requires_clauses": [...],
-    "ensures_clauses": [...],
-    "ghost_predicates": [...],
-    "ghost_functions": [...]
-  },
-  "proof": {
-    "lemmas": [...],
-    "invariants": [...],
-    "decreases_clauses": [...],
-    "assertions": [...]
-  }
-}
-```
-
-Each element includes its source location and parent information, enabling accurate reconstruction.
