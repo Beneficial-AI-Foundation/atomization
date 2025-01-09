@@ -1,11 +1,10 @@
 import sys
 import json
-from typing import List, Dict, Tuple
 
 def get_indentation(line: str) -> int:
     return len(line) - len(line.lstrip())
 
-def join_lines_with_indentation(lines: List[Tuple[str, int]]) -> str:
+def join_lines_with_indentation(lines: list[tuple[str, int]]) -> str:
     result = []
     for line, indent in lines:
         if not line.strip():
@@ -14,7 +13,7 @@ def join_lines_with_indentation(lines: List[Tuple[str, int]]) -> str:
             result.append(' ' * indent + line.strip())
     return '\n'.join(result) + '\n'  # Add final newline
 
-def collect_until_closing_brace(lines: List[str], start_idx: int) -> tuple[str, int]:
+def collect_until_closing_brace(lines: list[str], start_idx: int) -> tuple[str, int]:
     brace_count = 0
     chunk = []
     i = start_idx
@@ -44,7 +43,7 @@ def collect_until_closing_brace(lines: List[str], start_idx: int) -> tuple[str, 
         i += 1
     return join_lines_with_indentation(chunk), i
 
-def parse_dafny(content: str) -> List[Dict[str, str]]:
+def parse_dafny(content: str) -> list[dict[str, str]]:
     lines = content.split('\n')
     chunks = []
     chunk_order = 0

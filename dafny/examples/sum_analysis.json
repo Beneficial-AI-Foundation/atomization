@@ -1,0 +1,83 @@
+{
+  "code": {
+    "methods": [],
+    "executable_functions": [
+      {
+        "location": {
+          "filename": "dafny_files/sum.dfy",
+          "start_line": 1,
+          "start_col": 1,
+          "end_line": 9,
+          "end_col": 2
+        },
+        "content": "function Sum(f: int ~> real, lo: int, hi: int): real\n{\n  if lo == hi then 0.0 else\n    f(lo) + Sum(f, lo + 1, hi)\n}",
+        "parent": null,
+        "context_content": null
+      }
+    ]
+  },
+  "spec": {
+    "requires_clauses": [
+      {
+        "location": {
+          "filename": "dafny_files/sum.dfy",
+          "start_line": 2,
+          "start_col": 3,
+          "end_line": 2,
+          "end_col": 20
+        },
+        "content": "requires lo <= hi",
+        "parent": "Sum",
+        "context_content": null
+      },
+      {
+        "location": {
+          "filename": "dafny_files/sum.dfy",
+          "start_line": 3,
+          "start_col": 3,
+          "end_line": 3,
+          "end_col": 54
+        },
+        "content": "requires forall i :: lo <= i < hi ==> f.requires(i)",
+        "parent": "Sum",
+        "context_content": null
+      }
+    ],
+    "ensures_clauses": [],
+    "reads_clauses": [
+      {
+        "location": {
+          "filename": "dafny_files/sum.dfy",
+          "start_line": 4,
+          "start_col": 3,
+          "end_line": 4,
+          "end_col": 56
+        },
+        "content": "reads set i, o | lo <= i < hi && o in f.reads(i) :: o",
+        "parent": "Sum",
+        "context_content": null
+      }
+    ],
+    "ghost_predicates": [],
+    "ghost_functions": []
+  },
+  "proof": {
+    "lemmas": [],
+    "invariant_groups": [],
+    "decreases_clauses": [
+      {
+        "location": {
+          "filename": "dafny_files/sum.dfy",
+          "start_line": 5,
+          "start_col": 3,
+          "end_line": 5,
+          "end_col": 20
+        },
+        "content": "decreases hi - lo",
+        "parent": "Sum",
+        "context_content": null
+      }
+    ],
+    "assertions": []
+  }
+}
