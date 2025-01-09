@@ -5,6 +5,7 @@ import os
 import sys
 from pprint import pprint
 from atomization.dafny.atomizer import atomize_dafny
+from atomization.coq import atomize_str as atomize_coq
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -259,6 +260,9 @@ def main():
                 if get_code_language_id(code_id) == 1:
                     parsed_chunks = atomize_dafny(decoded_content)
                     print(f"Atomizing Dafny code with ID {code_id}")
+                elif get_code_language_id(code_id) == 3:
+                    parsed_chunks = atomize_coq(decoded_content)
+                    print(f"Atomizing Coq code with ID {code_id}")
                 else:
                     print(f"Language not supported yet")
                     sys.exit(1)

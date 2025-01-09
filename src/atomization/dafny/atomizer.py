@@ -1,7 +1,7 @@
 from atomization.dafny.parser import parse_dafny
 
 
-def atomize_dafny(content: str) -> dict:
+def atomize_dafny(content: str) -> list:
     """Analyze a Dafny file and return its code, spec, and proof components."""
     try:
 

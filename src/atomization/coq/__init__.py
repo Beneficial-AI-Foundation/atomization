@@ -1,78 +1,19 @@
+import os
 import re
 from dataclasses import dataclass
-from abc import abstractmethod, ABC
-from typing import Literal
 from pathlib import Path
 import json
 from coqpyt.coq.proof_file import ProofFile
-from coqpyt.coq.structs import TermType, ProofTerm, Term as CoqTerm
-
-
-class AtomBase(ABC):
-    @abstractmethod
-    def jsonify(self) -> dict:
-        pass
-
-
-class BottomAtom(AtomBase):
-    def jsonify(self) -> dict:
-        return json.loads("null")
-
-
-@dataclass
-class TheoremAtom(AtomBase):
-    termtype: str
-    identifier: str
-    lineno: int
-    spec: str
-    deps: list[AtomBase]
-    proof: list[str]
-
-    def __str__(self) -> str:
-        return f"{self.identifier} : {self.spec} := {self.proof}"
-
-    def jsonify(self) -> dict:
-        return {
-            "termtype": self.termtype,
-            "identifier": self.identifier,
-            "lineno": self.lineno,
-            "spec": self.spec,
-            "deps": [dep.jsonify() for dep in self.deps],
-            "proof": self.proof,
-        }
-
-
-@dataclass
-class NotationAtom(AtomBase):
-    termtype: str
-    identifier: str
-    lineno: int
-    scope: str | None
-    level: int | None
-    term: str
-    fmt: str | None
-    deps: list[AtomBase]
-
-    def jsonify(self) -> dict:
-        return {
-            "termtype": self.termtype,
-            "identifier": self.identifier,
-            "lineno": self.lineno,
-            "scope": self.scope,
-            "level": self.level,
-            "term": self.term,
-            "fmt": self.fmt,
-            "deps": [dep.jsonify() for dep in self.deps],
-        }
-
-
-type Term = ProofTerm | CoqTerm
-type Atoms = list[AtomBase]
-
-
-@dataclass
-class Atomizer:
-    filename: Path
+from coqpyt.coq.structs import TermType
+from atomization.coq.types import (
+    Atomizer,
+    Atoms,
+    Term,
+    AtomBase,
+    BottomAtom,
+    TheoremAtom,
+    NotationAtom,
+)
 
 
 def atomize(term: Term, context: Atoms) -> AtomBase:
@@ -208,7 +149,10 @@ class CoqAtomizer(Atomizer):
         return json.dumps([atom.jsonify() for atom in atoms])
 
 
-def main() -> None:
-    examples = Path("examples")
-    atomizer = CoqAtomizer(examples / "minimal.v")
-    print(atomizer.jsonify())
+def atomize_str(content: str) -> str:
+    tmp = Path("_temp.v")
+    with open(tmp, "w") as f:
+        f.write(content)
+    atomizer = CoqAtomizer(tmp)
+    os.remove(tmp)
+    return atomizer.jsonify()
