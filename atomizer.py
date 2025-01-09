@@ -1,5 +1,5 @@
-import mysql.connector
-from mysql.connector import Error
+from mysql import connector
+from mysql.connector import Error as MysqlConnectorError
 import logging
 import os
 import sys
@@ -32,9 +32,9 @@ class DBConnection:
         
     def __enter__(self):
         try:
-            self.conn = mysql.connector.connect(**self.config)
+            self.conn = connector.connect(**self.config)
             return self.conn
-        except Error as e:
+        except MysqlConnectorError as e:
             logger.error(f"Error connecting to MySQL: {e}")
             raise
             
@@ -63,7 +63,7 @@ def test_connection():
             
             return True
             
-    except Error as e:
+    except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return False
 
@@ -86,7 +86,7 @@ def get_code_entry(code_id: int):
                 print(f"No code found with ID {code_id}")
                 return None, None
             
-    except Error as e:
+    except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return None, None
     
@@ -101,7 +101,7 @@ def get_code_language_id(code_id: int):
             else:
                 logger.error(f"No code found with ID {code_id}")
                 return None
-    except Error as e:
+    except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return None
 
@@ -147,7 +147,7 @@ def create_package_entry(code_id: int):
             conn.commit()
             logger.info(f"Created package with ID {package_id}")
             return package_id
-    except Error as e:
+    except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return None
 
@@ -183,7 +183,7 @@ def create_snippets(package_id: int, parsed_chunks: list):
             logger.info(f"Created snippets for package {package_id}")
             return True
             
-    except Error as e:
+    except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return False
     
@@ -213,7 +213,7 @@ def delete_package_and_cleanup(package_id: int):
             logger.info(f"Successfully deleted package {package_id} and related entries")
             return True
             
-    except Error as e:
+    except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return False
 
