@@ -1,4 +1,4 @@
-from .dafny_parser import parse_dafny
+from atomization.dafny.parser import parse_dafny
 
 
 def atomize_dafny(content: str) -> dict:
@@ -7,8 +7,7 @@ def atomize_dafny(content: str) -> dict:
 
         parsed_dafny = parse_dafny(content)
         return parsed_dafny
-        
-       
+
     except Exception as e:
         print(f"Debug - Exception details: {type(e).__name__}: {str(e)}")
         raise Exception(f"Error analyzing {content}: {str(e)}")
