@@ -1,0 +1,10 @@
+[project]
+name = "atomizer"
+version = "0.1.0"
+dependencies = [
+    "mysql-connector-python",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
