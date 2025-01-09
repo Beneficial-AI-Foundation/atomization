@@ -97,12 +97,8 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
             | TermType.COFIXPOINT
             | TermType.FUNCTION
         ):
-            # for attr in dir(term):
-            #     if attr.startswith("_"):
-            #         continue
-            #     print(f"attr: {attr}")
-            return BottomAtom()
             # raise NotImplementedError
+            return BottomAtom()
         case TermType.INDUCTIVE | TermType.VARIANT | TermType.COINDUCTIVE:
             pattern_inductive = r"(Inductive|Variant|CoInductive)\s+(\w+)\s*:\s*((?:\w+(?:\s+\w+)*?))\s*:=\s*((?:.|[\r\n])*)"
             term_type, name, _, defn = re.match(
