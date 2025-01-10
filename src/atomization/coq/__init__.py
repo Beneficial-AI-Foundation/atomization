@@ -159,8 +159,9 @@ def atomize_str_vlib(content: str) -> list:
     with open(tmp, "w") as f:
         f.write(content)
     atomizer = CoqAtomizer(tmp)
+    jsn = atomizer.jsonify_vlib()
     os.remove(tmp)
-    return atomizer.jsonify_vlib()
+    return jsn
 
 
 def atomize_str(content: str) -> str:
@@ -168,5 +169,6 @@ def atomize_str(content: str) -> str:
     with open(tmp, "w") as f:
         f.write(content)
     atomizer = CoqAtomizer(tmp)
+    jsn = atomizer.jsonify()
     os.remove(tmp)
-    return atomizer.jsonify()
+    return jsn
