@@ -134,6 +134,69 @@ def handle_method_or_function(lines: list[str], start_idx: int, chunk_order: int
     
     return chunks, i, chunk_order
 
+def handle_class(lines: list[str], start_idx: int, chunk_order: int) -> tuple[list[dict], int, int]:
+    chunks = []
+    i = start_idx
+    
+    # Get the class signature and fields
+    class_chunk = [(lines[i].strip(), get_indentation(lines[i]))]
+    i += 1
+    brace_count = 1  # We've seen the opening brace in the class line
+    
+    # Collect class fields
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+            
+        # If we find a method, function, etc., stop collecting fields
+        if any(line.strip().startswith(x) for x in ['method', 'function', 'ghost', 'lemma']):
+            break
+            
+        class_chunk.append((line.strip(), get_indentation(line)))
+        brace_count += line.count('{')
+        brace_count -= line.count('}')
+        i += 1
+    
+    # Add the class signature and fields as a code chunk
+    chunks.append({
+        'content': join_lines_with_indentation(class_chunk),
+        'type': 'code',
+        'order': chunk_order
+    })
+    chunk_order += 1
+    
+    # Process the rest of the class body
+    while i < len(lines) and brace_count > 0:
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+        
+        if line.strip().startswith(('ghost', 'lemma')):
+            chunk, i = collect_until_closing_brace(lines, i)
+            chunks.append({
+                'content': chunk,
+                'type': 'proof' if line.strip().startswith('lemma') else 'spec',
+                'order': chunk_order
+            })
+            chunk_order += 1
+            continue
+        
+        if line.strip().startswith(('method', 'function')) and not line.strip().startswith('ghost'):
+            new_chunks, new_i, new_order = handle_method_or_function(lines, i, chunk_order)
+            chunks.extend(new_chunks)
+            i = new_i
+            chunk_order = new_order
+            continue
+            
+        brace_count += line.count('{')
+        brace_count -= line.count('}')
+        i += 1
+    
+    return chunks, i, chunk_order
+
 def parse_dafny(content: str) -> list[dict[str, str]]:
     lines = content.split('\n')
     chunks = []
@@ -144,6 +207,13 @@ def parse_dafny(content: str) -> list[dict[str, str]]:
         line = lines[i]
         if not line.strip():
             i += 1
+            continue
+
+        if line.strip().startswith('class'):
+            new_chunks, new_i, new_order = handle_class(lines, i, chunk_order)
+            chunks.extend(new_chunks)
+            i = new_i
+            chunk_order = new_order
             continue
 
         if line.strip().startswith(('ghost', 'lemma')):
@@ -157,89 +227,10 @@ def parse_dafny(content: str) -> list[dict[str, str]]:
             continue
 
         if line.strip().startswith(('method', 'function')) and not line.strip().startswith('ghost'):
-            # Get the method/function signature
-            signature = [(line.strip(), get_indentation(line))]
-            i += 1
-            
-            chunks.append({
-                'content': join_lines_with_indentation(signature),
-                'type': 'spec+code',
-                'order': chunk_order
-            })
-            chunk_order += 1
-            
-            # Collect specs (requires/ensures/decreases)
-            spec = []
-            while i < len(lines):
-                line = lines[i]
-                if not line.strip():
-                    i += 1
-                    continue
-                if '{' in line:
-                    break
-                if any(x in line for x in ['requires', 'ensures', 'decreases']):
-                    spec.append((line.strip(), get_indentation(line)))
-                    i += 1
-                    continue
-                i += 1
-                
-            if spec:
-                chunks.append({
-                    'content': join_lines_with_indentation(spec),
-                    'type': 'spec',
-                    'order': chunk_order
-                })
-                chunk_order += 1
-            
-            # Process method/function body
-            current_chunk = [(line.strip(), get_indentation(line))]
-            brace_count = line.count('{')
-            code_chunks = []
-            
-            while i < len(lines) and brace_count > 0:
-                i += 1
-                if i >= len(lines):
-                    break
-                    
-                line = lines[i]
-                if not line.strip():
-                    continue
-                    
-                current_indent = get_indentation(line)
-                if 'invariant' in line.strip() or 'decreases' in line.strip():
-                    if current_chunk:
-                        code_chunks.append(('code', join_lines_with_indentation(current_chunk)))
-                    
-                    proof_lines = [(line.strip(), current_indent)]
-                    while i + 1 < len(lines):
-                        next_line = lines[i + 1]
-                        if not next_line.strip():
-                            i += 1
-                            continue
-                        if not ('invariant' in next_line.strip() or 'decreases' in next_line.strip()):
-                            break
-                        proof_lines.append((next_line.strip(), get_indentation(next_line)))
-                        i += 1
-                    
-                    code_chunks.append(('proof', join_lines_with_indentation(proof_lines)))
-                    current_chunk = []
-                    continue
-                
-                current_chunk.append((line.strip(), current_indent))
-                brace_count += line.count('{')
-                brace_count -= line.count('}')
-                
-                if brace_count == 0:
-                    if current_chunk:
-                        code_chunks.append(('code', join_lines_with_indentation(current_chunk)))
-            
-            for chunk_type, chunk_content in code_chunks:
-                chunks.append({
-                    'content': chunk_content,
-                    'type': chunk_type,
-                    'order': chunk_order
-                })
-                chunk_order += 1
+            new_chunks, new_i, new_order = handle_method_or_function(lines, i, chunk_order)
+            chunks.extend(new_chunks)
+            i = new_i
+            chunk_order = new_order
             continue
             
         i += 1

@@ -217,6 +217,30 @@ def delete_package_and_cleanup(package_id: int):
         logger.error(f"Database error: {e}")
         return False
 
+def sort_dafny_chunks(result: dict) -> list[dict]:
+    """
+    Takes a dictionary of categorized chunks and returns a flat list sorted by order
+    
+    Args:
+        result: Dictionary with keys 'code', 'proof', 'spec', 'spec+code', 
+               where each value is a list of dicts with 'content' and 'order' keys
+    
+    Returns:
+        List of dictionaries with 'content', 'order', and 'type' keys, sorted by order
+    """
+    # Create a flat list of all chunks with their types
+    all_chunks = []
+    
+    for chunk_type in ['code', 'proof', 'spec', 'spec+code']:
+        for chunk in result.get(chunk_type, []):
+            all_chunks.append({
+                'content': chunk['content'],
+                'order': chunk['order'],
+                'type': chunk_type
+            })
+    
+    # Sort by order
+    return sorted(all_chunks, key=lambda x: x['order'])
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
@@ -238,6 +262,10 @@ if __name__ == "__main__":
                         for chunk in parsed_chunks if chunk['type'] == 'spec+code']
             }
             pprint(result)
+            sorted_chunks = sort_dafny_chunks(result)
+            for chunk in sorted_chunks:
+                print(f"Order {chunk['order']} ({chunk['type']}):")
+                print(chunk['content'])
     elif sys.argv[1] == "delete" and len(sys.argv) == 3:
         print(f'Deleting package {sys.argv[2]}')
         # run delete_package_and_cleanup
