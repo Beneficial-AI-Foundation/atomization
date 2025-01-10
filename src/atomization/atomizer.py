@@ -1,12 +1,14 @@
-from mysql import connector
-from mysql.connector import Error as MysqlConnectorError
 import logging
 import os
 import sys
 from pprint import pprint
+from mysql import connector
+from mysql.connector import Error as MysqlConnectorError
+from dotenv import load_dotenv
 from atomization.dafny.atomizer import atomize_dafny
-from atomization.coq import atomize_str as atomize_coq
+from atomization.coq import atomize_str_vlib as atomize_coq
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -236,6 +238,56 @@ def delete_package_and_cleanup(package_id: int):
         return False
 
 
+def jsonify_vlib_dafny(parsed_chunks: list[dict]) -> dict:
+    return {
+        "spec": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "spec"
+        ],
+        "code": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "code"
+        ],
+        "proof": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "proof"
+        ],
+        "spec+code": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "spec+code"
+        ],
+    }
+
+
+def jsonify_vlib_coq(parsed_chunks: list[dict]) -> dict:
+    return {
+        "spec": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "spec"
+        ],
+        "code": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "code"
+        ],
+        "proof": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "proof"
+        ],
+        "spec+code": [
+            {"content": chunk["content"], "order": chunk["order"]}
+            for chunk in parsed_chunks
+            if chunk["type"] == "spec+code"
+        ],
+    }
+
+
 def main():
     if len(sys.argv) == 1:
         print(f"Usage: python atomizer.py <code id>")
@@ -260,35 +312,15 @@ def main():
                 if get_code_language_id(code_id) == 1:
                     parsed_chunks = atomize_dafny(decoded_content)
                     print(f"Atomizing Dafny code with ID {code_id}")
+                    result = jsonify_vlib_dafny(parsed_chunks)
                 elif get_code_language_id(code_id) == 3:
                     parsed_chunks = atomize_coq(decoded_content)
                     print(f"Atomizing Coq code with ID {code_id}")
+                    result = jsonify_vlib_coq(parsed_chunks)
                 else:
                     print(f"Language not supported yet")
                     sys.exit(1)
 
-                result = {
-                    "spec": [
-                        {"content": chunk["content"], "order": chunk["order"]}
-                        for chunk in parsed_chunks
-                        if chunk["type"] == "spec"
-                    ],
-                    "code": [
-                        {"content": chunk["content"], "order": chunk["order"]}
-                        for chunk in parsed_chunks
-                        if chunk["type"] == "code"
-                    ],
-                    "proof": [
-                        {"content": chunk["content"], "order": chunk["order"]}
-                        for chunk in parsed_chunks
-                        if chunk["type"] == "proof"
-                    ],
-                    "spec+code": [
-                        {"content": chunk["content"], "order": chunk["order"]}
-                        for chunk in parsed_chunks
-                        if chunk["type"] == "spec+code"
-                    ],
-                }
                 pprint(result)
 
                 # Create package entry

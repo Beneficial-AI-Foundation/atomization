@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 import json
+from functools import reduce
 from coqpyt.coq.proof_file import ProofFile
 from coqpyt.coq.structs import TermType
 from atomization.coq.types import (
@@ -147,6 +148,19 @@ class CoqAtomizer(Atomizer):
     def jsonify(self) -> str:
         atoms = self.atomize()
         return json.dumps([atom.jsonify() for atom in atoms])
+
+    def jsonify_vlib(self) -> list:
+        atoms = self.atomize()
+        return reduce(lambda x, y: x + y, [atom.jsonify_vlib() for atom in atoms])
+
+
+def atomize_str_vlib(content: str) -> list:
+    tmp = Path("_temp.v")
+    with open(tmp, "w") as f:
+        f.write(content)
+    atomizer = CoqAtomizer(tmp)
+    os.remove(tmp)
+    return atomizer.jsonify_vlib()
 
 
 def atomize_str(content: str) -> str:

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
+import json
 from coqpyt.coq.structs import ProofTerm, Term as CoqTerm
 
 
@@ -8,10 +10,17 @@ class AtomBase(ABC):
     def jsonify(self) -> dict:
         pass
 
+    @abstractmethod
+    def jsonify_vlib(self) -> list:
+        pass
+
 
 class BottomAtom(AtomBase):
     def jsonify(self) -> dict:
         return json.loads("null")
+
+    def jsonify_vlib(self) -> dict:
+        return self.jsonify()
 
 
 @dataclass
@@ -36,6 +45,12 @@ class TheoremAtom(AtomBase):
             "proof": self.proof,
         }
 
+    def jsonify_vlib(self) -> list:
+        return [
+            {"content": self.spec, "type": "spec", "order": None},
+            {"content": "".join(self.proof), "type": "proof", "order": None},
+        ]
+
 
 @dataclass
 class NotationAtom(AtomBase):
@@ -59,6 +74,9 @@ class NotationAtom(AtomBase):
             "fmt": self.fmt,
             "deps": [dep.jsonify() for dep in self.deps],
         }
+
+    def jsonify_vlib(self) -> list:
+        return []
 
 
 type Term = ProofTerm | CoqTerm
