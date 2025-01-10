@@ -6,7 +6,7 @@ from mysql import connector
 from mysql.connector import Error as MysqlConnectorError
 from dotenv import load_dotenv
 from atomization.dafny.atomizer import atomize_dafny
-from atomization.coq import atomize_str_vlib as atomize_coq
+from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
