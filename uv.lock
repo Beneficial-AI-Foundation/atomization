@@ -14,7 +14,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "coqpyt", git = "https://github.com/sr-lab/coqpyt" },
-    { name = "mysql-connector-python" },
+    { name = "mysql-connector-python", specifier = ">=9.1.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
 ]
 
