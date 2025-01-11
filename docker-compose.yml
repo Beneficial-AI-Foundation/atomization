@@ -1,0 +1,13 @@
+version: "3"
+services:
+  atomization:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ~/.ssh:/root/.ssh
+      - ~/Projects/safeguarded/baif/atomization:/root
+    working_dir: /root
+    entrypoint: ["bash"]
+    stdin_open: true
+    tty: true
