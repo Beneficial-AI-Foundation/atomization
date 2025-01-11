@@ -9,3 +9,4 @@ venv/
 .lia.cache
 .nia.cache
 .env
+*.ipynb

@@ -110,7 +110,7 @@ def get_code_language_id(code_id: int):
         return None
 
 
-def create_package_entry(code_id: int):
+def create_package_entry(code_id: int, code_language_id: int):
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
@@ -141,7 +141,7 @@ def create_package_entry(code_id: int):
                 insert_query,
                 (
                     code_id,
-                    1,
+                    code_language_id,
                     description,
                     original_code.get("url"),
                     original_code.get("filename"),
@@ -163,7 +163,7 @@ def create_package_entry(code_id: int):
         return None
 
 
-def create_snippets(package_id: int, parsed_chunks: list):
+def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list):
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
@@ -187,7 +187,7 @@ def create_snippets(package_id: int, parsed_chunks: list):
                     insert_query,
                     (
                         package_id,
-                        1,  # language_id for Dafny
+                        code_language_id,
                         type_map[chunk["type"]],
                         chunk["content"],
                         chunk["order"],
@@ -238,54 +238,15 @@ def delete_package_and_cleanup(package_id: int):
         return False
 
 
-def jsonify_vlib_dafny(parsed_chunks: list[dict]) -> dict:
-    return {
-        "spec": [
+def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
+    def jsonify_content(typ: str) -> list:
+        return [
             {"content": chunk["content"], "order": chunk["order"]}
             for chunk in parsed_chunks
-            if chunk["type"] == "spec"
-        ],
-        "code": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "code"
-        ],
-        "proof": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "proof"
-        ],
-        "spec+code": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "spec+code"
-        ],
-    }
+            if chunk["type"] == typ
+        ]
 
-
-def jsonify_vlib_coq(parsed_chunks: list[dict]) -> dict:
-    return {
-        "spec": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "spec"
-        ],
-        "code": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "code"
-        ],
-        "proof": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "proof"
-        ],
-        "spec+code": [
-            {"content": chunk["content"], "order": chunk["order"]}
-            for chunk in parsed_chunks
-            if chunk["type"] == "spec+code"
-        ],
-    }
+    return {typ: jsonify_content(typ) for typ in ["spec", "code", "proof", "spec+code"]}
 
 
 def main():
@@ -308,15 +269,15 @@ def main():
 
             if content is not None:
                 decoded_content = content.decode("utf-8")
-                # Check language ID
-                if get_code_language_id(code_id) == 1:
+                code_language_id = get_code_language_id(code_id)
+                if code_language_id == 1:
                     parsed_chunks = atomize_dafny(decoded_content)
                     print(f"Atomizing Dafny code with ID {code_id}")
-                    result = jsonify_vlib_dafny(parsed_chunks)
-                elif get_code_language_id(code_id) == 3:
+                    result = jsonify_vlib(parsed_chunks)
+                elif code_language_id == 3:
                     parsed_chunks = atomize_coq(decoded_content)
                     print(f"Atomizing Coq code with ID {code_id}")
-                    result = jsonify_vlib_coq(parsed_chunks)
+                    result = jsonify_vlib(parsed_chunks)
                 else:
                     print(f"Language not supported yet")
                     sys.exit(1)
@@ -324,7 +285,7 @@ def main():
                 pprint(result)
 
                 # Create package entry
-                package_id = create_package_entry(code_id)
+                package_id = create_package_entry(code_id, code_language_id)
                 if package_id:
                     logger.info(f"Successfully created package with ID {package_id}")
                     # Create snippets entries

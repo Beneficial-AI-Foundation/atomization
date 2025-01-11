@@ -18,7 +18,6 @@ from atomization.coq.types import (
 
 
 def atomize(term: Term, context: Atoms) -> AtomBase:
-    # print(term.step.short_text)
     match term.type:
         case TermType.THEOREM | TermType.LEMMA:
             pattern_thm_lma = r"(Theorem|Lemma)\s+(\w+)\s*:\s*(.*)"
