@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ~/.ssh:/root/.ssh
-      - ~/Projects/safeguarded/baif/atomization:/root
+      - $PWD:/root
     working_dir: /root
     entrypoint: ["bash"]
     stdin_open: true
