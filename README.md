@@ -13,6 +13,7 @@ nix develop
 To install `coq-lsp`. You'll have to have installed nix and [enabled flakes](https://nixos.wiki/wiki/flakes)
 
 Either way, you need to
+
 ```base
 uv sync
 ```
@@ -20,6 +21,7 @@ uv sync
 To install python version and dependencies
 
 ### Atomize
+
 ```base
 uv run main <code_id>
 ```
@@ -27,6 +29,7 @@ uv run main <code_id>
 Creates a package corresponding to the code and atomizes it into snippets.
 
 ### Clean up DB
+
 ```base
 uv run main delete <package_id>
 ```

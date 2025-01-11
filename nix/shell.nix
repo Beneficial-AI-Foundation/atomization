@@ -12,7 +12,13 @@
         inherit pkgs;
         coqpyt-src = inputs.coqpyt;
       };
-      buildInputs = coq ++ python ++ [ pkgs.nodejs_23 pkgs.jq ];
+      buildInputs =
+        coq
+        ++ python
+        ++ [
+          pkgs.nodejs_23
+          pkgs.jq
+        ];
       greeting = "Atomization with coq-lsp";
       shellHook = "echo ${greeting}";
       name = "coq-atomization";
