@@ -277,26 +277,6 @@ def main():
     if len(sys.argv) == 1:
         print(f'Usage: python atomizer.py <code id>')
         print(f'Usage: python atomizer.py delete <package_id>')
-        print(f'Usage: python atomizer.py test <filename>')
-    elif sys.argv[1] == "test" and len(sys.argv) == 3:
-        with open(sys.argv[2], 'r') as f:
-            content = f.read()
-            parsed_chunks = atomize_dafny(content)
-            result = {
-                'spec': [{'content': chunk['content'], 'order': chunk['order']} 
-                        for chunk in parsed_chunks if chunk['type'] == 'spec'],
-                'code': [{'content': chunk['content'], 'order': chunk['order']}
-                        for chunk in parsed_chunks if chunk['type'] == 'code'],
-                'proof': [{'content': chunk['content'], 'order': chunk['order']}
-                        for chunk in parsed_chunks if chunk['type'] == 'proof'],
-                'spec+code': [{'content': chunk['content'], 'order': chunk['order']}
-                        for chunk in parsed_chunks if chunk['type'] == 'spec+code']
-            }
-            pprint(result)
-            sorted_chunks = sort_dafny_chunks(result)
-            for chunk in sorted_chunks:
-                print(f"Order {chunk['order']} ({chunk['type']}):")
-                print(chunk['content'])
     elif sys.argv[1] == "delete" and len(sys.argv) == 3:
         print(f"Deleting package {sys.argv[2]}")
         # run delete_package_and_cleanup
