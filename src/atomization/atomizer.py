@@ -330,7 +330,7 @@ def main():
                 if package_id:
                     logger.info(f"Successfully created package with ID {package_id}")
                     # Create snippets entries
-                    if create_snippets(package_id, parsed_chunks):
+                    if create_snippets(package_id, code_language_id, parsed_chunks):
                         logger.info("Successfully created snippets")
                     else:
                         logger.error("Failed to create snippets")
