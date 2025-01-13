@@ -251,16 +251,16 @@ def sort_dafny_chunks(result: dict) -> list[dict]:
     # Create a flat list of all chunks with their types
     all_chunks = []
     
-    for chunk_type in ['code', 'proof', 'spec', 'spec+code']:
+    for chunk_type in ["code", "proof", "spec", "spec+code"]:
         for chunk in result.get(chunk_type, []):
             all_chunks.append({
-                'content': chunk['content'],
-                'order': chunk['order'],
-                'type': chunk_type
+                "content": chunk["content"],
+                "order": chunk["order"],
+                "type": chunk_type
             })
     
     # Sort by order
-    return sorted(all_chunks, key=lambda x: x['order'])
+    return sorted(all_chunks, key=lambda x: x["order"])
 
 def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
     def jsonify_content(typ: str) -> list:
@@ -275,8 +275,8 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
 
 def main():
     if len(sys.argv) == 1:
-        print(f'Usage: python atomizer.py <code id>')
-        print(f'Usage: python atomizer.py delete <package_id>')
+        print(f"Usage: python atomizer.py <code id>")
+        print(f"Usage: python atomizer.py delete <package_id>")
     elif sys.argv[1] == "test":
         test_connection()
     elif sys.argv[1] == "delete" and len(sys.argv) == 3:
