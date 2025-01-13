@@ -17,6 +17,8 @@ jobs:
         uses: astral-sh/setup-uv@v5
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+      - name: Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Install packages
         run: uv sync
       - name: Check lint
