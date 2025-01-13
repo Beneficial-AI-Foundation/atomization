@@ -21,7 +21,7 @@ def collect_until_closing_brace(lines: list[str], start_idx: int) -> tuple[str, 
     while i < len(lines):
         line = lines[i]
         if not line.strip():
-            if brace_count == 0 and "{" in "".join(l[0] for l in chunk):
+            if brace_count == 0 and "{" in "".join(word[0] for word in chunk):
                 empty_lines_after += 1
                 if empty_lines_after > 1:  # Found two consecutive empty lines
                     break
@@ -36,7 +36,7 @@ def collect_until_closing_brace(lines: list[str], start_idx: int) -> tuple[str, 
         brace_count += line.strip().count("{")
         brace_count -= line.strip().count("}")
 
-        if brace_count == 0 and "{" in "".join(l[0] for l in chunk):
+        if brace_count == 0 and "{" in "".join(word[0] for word in chunk):
             i += 1
             break
         i += 1

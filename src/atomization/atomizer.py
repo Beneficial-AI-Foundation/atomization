@@ -251,8 +251,8 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
 
 def main():
     if len(sys.argv) == 1:
-        print(f"Usage: python atomizer.py <code id>")
-        print(f"Usage: python atomizer.py delete <package_id>")
+        print("Usage: python atomizer.py <code id>")
+        print("Usage: python atomizer.py delete <package_id>")
     elif sys.argv[1] == "test":
         test_connection()
     elif sys.argv[1] == "delete" and len(sys.argv) == 3:
@@ -279,7 +279,7 @@ def main():
                     print(f"Atomizing Coq code with ID {code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 else:
-                    print(f"Language not supported yet")
+                    print("Language not supported yet")
                     sys.exit(1)
 
                 pprint(result)
