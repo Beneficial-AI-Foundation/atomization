@@ -237,6 +237,30 @@ def delete_package_and_cleanup(package_id: int):
         logger.error(f"Database error: {e}")
         return False
 
+def sort_dafny_chunks(result: dict) -> list[dict]:
+    """
+    Takes a dictionary of categorized chunks and returns a flat list sorted by order
+    
+    Args:
+        result: Dictionary with keys 'code', 'proof', 'spec', 'spec+code', 
+               where each value is a list of dicts with 'content' and 'order' keys
+    
+    Returns:
+        List of dictionaries with 'content', 'order', and 'type' keys, sorted by order
+    """
+    # Create a flat list of all chunks with their types
+    all_chunks = []
+    
+    for chunk_type in ["code", "proof", "spec", "spec+code"]:
+        for chunk in result.get(chunk_type, []):
+            all_chunks.append({
+                "content": chunk["content"],
+                "order": chunk["order"],
+                "type": chunk_type
+            })
+    
+    # Sort by order
+    return sorted(all_chunks, key=lambda x: x["order"])
 
 def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
     def jsonify_content(typ: str) -> list:
@@ -261,7 +285,6 @@ def main():
         package_id = int(sys.argv[2])
         if delete_package_and_cleanup(package_id):
             logger.info(f"Successfully deleted package {package_id}")
-
     else:
         try:
             code_id = int(sys.argv[1])
@@ -289,7 +312,7 @@ def main():
                 if package_id:
                     logger.info(f"Successfully created package with ID {package_id}")
                     # Create snippets entries
-                    if create_snippets(package_id, parsed_chunks):
+                    if create_snippets(package_id, code_language_id, parsed_chunks):
                         logger.info("Successfully created snippets")
                     else:
                         logger.error("Failed to create snippets")
