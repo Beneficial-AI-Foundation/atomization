@@ -1,0 +1,18 @@
+name: UV Checks and Tests
+
+jobs:
+  python-checks-tests:
+    name: Python lint and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Install packages
+        run: uv sync
+      - name: Check lint
+        run: uv run ruff check .
+      - name: Run tests
+        run: uv run pytest
