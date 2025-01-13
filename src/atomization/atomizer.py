@@ -277,6 +277,8 @@ def main():
     if len(sys.argv) == 1:
         print(f'Usage: python atomizer.py <code id>')
         print(f'Usage: python atomizer.py delete <package_id>')
+    elif sys.argv[1] == "test":
+        test_connection()
     elif sys.argv[1] == "delete" and len(sys.argv) == 3:
         print(f"Deleting package {sys.argv[2]}")
         # run delete_package_and_cleanup
