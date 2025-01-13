@@ -4,17 +4,10 @@
 
 ### Dependencies
 
-If you'd like to run it on a coq sample, you must
+You'll have to have installed nix and [enabled flakes](https://nixos.wiki/wiki/flakes)
 
 ```base
 nix develop
-```
-
-To install `coq-lsp`. You'll have to have installed nix and [enabled flakes](https://nixos.wiki/wiki/flakes)
-
-Either way, you need to
-
-```base
 uv sync
 ```
 
