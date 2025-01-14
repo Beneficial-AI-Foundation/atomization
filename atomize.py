@@ -1,6 +1,7 @@
 # %%
 import json
 from pathlib import Path
+
 from typing import TypedDict, List, Optional, Set, Dict, Any, Collection
 from typing import Literal
 from dataclasses import dataclass, field
@@ -124,7 +125,8 @@ def atomize_file(
         sym for sym in catalog if sym.split(".")[0] not in all_excluded_namespaces
     ]
     short_filtered_symbols = [sym for sym in filtered_symbols if sym.startswith("Atom_")]
-    print(f"TestType type: {server.expr_type('TestType')}")
+    print(f'short filtered symbols: {short_filtered_symbols}')
+    # print(f"TestType type: {server.expr_type('Atom_TestType')}")
     print(f"Filtered symbols length: {len(filtered_symbols)}")
     # Dump filtered symbols to JSON for inspection/debugging
     with Path("/Users/alokbeniwal/atomization/filtered_symbols.json").open("w") as f:
@@ -154,11 +156,20 @@ def atomize_file(
 
         module_path = info.get("module", "")
         # Extract definition info
+        start_line:int|None = info.get("sourceStart", {}).get("line", None)
+        start_col:int|None = info.get("sourceStart", {}).get("column", None)
+        end_line:int|None = info.get("sourceEnd", {}).get("line", None)
+        end_col:int|None = info.get("sourceEnd", {}).get("column", None)
+        
+        if any(v is None for v in [start_line, start_col, end_line, end_col]):
+            # skip symbol, it's not actually in the code but auto-generated
+            continue
+        
         line_col_info = LineColInfo(
-            start_line=info.get("sourceStart", {}).get("line", 0),
-            start_col=info.get("sourceStart", {}).get("column", 0),
-            end_line=info.get("sourceEnd", {}).get("line", 0),
-            end_col=info.get("sourceEnd", {}).get("column", 0),
+            start_line=start_line,
+            start_col=start_col,
+            end_line=end_line,
+            end_col=end_col,
         )
         type_info = info.get("type", {}).get("pp", "")
         file_path = module_to_file_path(module_path, project_root)
@@ -203,7 +214,7 @@ def deserialize_theorem(def_atom: AtomizedDef) -> str:
     ```
 
     """
-    return f"theorem {def_atom.name} : {def_atom.type} := {def_atom.source_code}"
+    return def_atom.source_code
 
 
 def deserialize_def(def_atom: AtomizedDef) -> str:
@@ -213,7 +224,7 @@ def deserialize_def(def_atom: AtomizedDef) -> str:
     def $(name) : $(type) := $(value)
     ```
     """
-    return f"def {def_atom.name} : {def_atom.type} := {def_atom.source_code}"
+    return def_atom.source_code
 
 
 def deserialize_decl(def_atom: AtomizedDef) -> str:
@@ -236,12 +247,26 @@ def de_atomize(
     if is_builtin(def_atom.name, server, exclude_namespaces):
         return out
 
+    # Skip if no source code available
+    if def_atom.source_code is None:
+        return out
+
     # Recursively add all dependencies to `out`
     for dep in def_atom.type_dependencies | def_atom.value_dependencies:
-        dep_def = find_def(dep, all_atoms)
-        if dep_def.module_path:  # not a builtin
-            # Pass the current out string, don't use it in concatenation
-            out = de_atomize(dep_def, all_atoms, server, exclude_namespaces, out)
+        try:
+            dep_def = find_def(dep, all_atoms)
+            if dep_def.module_path:  # not a builtin
+                # Pass the current out string, don't use it in concatenation
+                out = de_atomize(dep_def, all_atoms, server, exclude_namespaces, out)
+        except StopIteration:
+            # Dependency not in all_atoms, check if it's a builtin using env.inspect
+            info = server.env_inspect(name=dep, print_value=True, print_dependency=True)
+            if not info.get("sourceStart", None):  # No source location info
+                continue
+            module_name = info["module"]
+            if module_name.split(".")[0] not in exclude_namespaces:
+                # Not a builtin and not in all_atoms - this is unexpected
+                logging.warning(f"Dependency {dep} not found in atoms or builtins")
 
     # Add current definition to output (must be after all dependencies are added)
     out += deserialize_decl(def_atom) + "\n"
@@ -254,21 +279,21 @@ def test_atomizer() -> None:
     The code in question is in `Atomization/Basic.lean`:
 
     ```lean
-    def g := 1
+    def Atom_g := 1
 
-    def f := 2
-    def fg := g + g
-    def f' : 2 = 2 := rfl
+    def Atom_f := 2
+    def Atom_fg := Atom_g + Atom_g
+    def Atom_f' : 2 = 2 := rfl
 
-    theorem f'' : 2 = 2 := by rfl
+    theorem Atom_f'' : 2 = 2 := by rfl
 
-    def fib : Nat → Nat := fun n =>
+    def Atom_fib : Nat → Nat := fun n =>
     match n with
     | 0 => 0
     | 1 => 1
-    | n + 2 => fib (n + 1) + fib n
+    | n + 2 => Atom_fib (n + 1) + Atom_fib n
 
-    def fibImperative (n: Nat) : Nat := Id.run do
+    def Atom_fibImperative (n: Nat) : Nat := Id.run do
     let mut a : Nat := 0
     let mut b : Nat := 1
     for i in [0:n] do
@@ -278,7 +303,7 @@ def test_atomizer() -> None:
     return b
 
     @[csimp]
-    theorem fib_spec : @fib = @fibImperative := by
+    theorem Atom_fib_spec : @Atom_fib = @Atom_fibImperative := by
     sorry
 
     ```
@@ -291,33 +316,31 @@ def test_atomizer() -> None:
     print(f"Atomized: {len(all_atoms)} atoms")
 
     # Test g definition
-    g_def = find_def("g", all_atoms)
+    g_def = find_def("Atom_g", all_atoms)
     print(g_def)
 
-    assert g_def.source_code == "1", f"Expected source code to be '1', got {g_def.source_code}"
+    assert g_def.source_code == "def Atom_g := 1", f"Expected source code to be 'def Atom_g := 1', got {g_def.source_code}"
     assert g_def.type == "Nat", f"Expected type to be 'Nat', got {g_def.type}"
     assert g_def.kind == "def", f"Expected kind to be 'def', got {g_def.kind}"
 
     # Test fg definition and its dependencies
-    fg_def = find_def("fg", all_atoms)
+    fg_def = find_def("Atom_fg", all_atoms)
     print(fg_def)
 
-    assert fg_def.source_code == "g + g", f"Expected source code to be 'g + g', got {fg_def.source_code}"
-    assert "g" in fg_def.value_dependencies, f"Expected value dependencies to include 'g', got {fg_def.value_dependencies}"
+    assert fg_def.source_code == "def Atom_fg := Atom_g + Atom_g", f"Expected source code to be 'def Atom_fg := Atom_g + Atom_g', got {fg_def.source_code}"
+    assert "Atom_g" in fg_def.value_dependencies, f"Expected value dependencies to include 'Atom_g', got {fg_def.value_dependencies}"
     assert fg_def.kind == "def", f"Expected kind to be 'def', got {fg_def.kind}"
 
     # Test theorem f''
-    f2_def = find_def("f''", all_atoms)
+    f2_def = find_def("Atom_f''", all_atoms)
     print(f2_def)
 
     assert f2_def.type == "2 = 2", f"Expected type to be '2 = 2', got {f2_def.type}"    
     assert f2_def.kind == "theorem", f"Expected kind to be 'theorem', got {f2_def.kind}"
-    assert "f" in f2_def.type_dependencies, f"Expected type dependencies to include 'f', got {f2_def.type_dependencies}"
-    assert "f" in f2_def.value_dependencies, f"Expected value dependencies to include 'f', got {f2_def.value_dependencies}"
 
     # Test ref spec for fib and fibImperative
-    fib_def = find_def("fib", all_atoms)
-    fib_imp_def = find_def("fibImperative", all_atoms)
+    fib_def = find_def("Atom_fib", all_atoms)
+    fib_imp_def = find_def("Atom_fibImperative", all_atoms)
     print(f"fib def: {fib_def}")
     print(f"fibImperative def: {fib_imp_def}")
 

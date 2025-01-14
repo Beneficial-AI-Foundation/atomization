@@ -11,12 +11,12 @@ def Atom_g := 1
 -- import Lean.Meta
 
 
-inductive Atom_TestType
-| A
-| B : Atom_TestType
-| C (x : Atom_TestType)
-| D (n : Nat)
-deriving Repr
+-- inductive Atom_TestType
+-- | A
+-- | B : Atom_TestType
+-- | C (x : Atom_TestType)
+-- | D (n : Nat)
+-- deriving Repr
 
 
 def Atom_f := 2
