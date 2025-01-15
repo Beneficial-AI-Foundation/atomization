@@ -79,6 +79,16 @@ class NotationAtom(AtomBase):
         return []
 
 
+@dataclass
+class DefinitionAtom(AtomBase):
+    termtype: str
+    identifier: str
+    lineno: int
+    signature: str
+    body: str
+    deps: list[AtomBase]
+
+
 type Term = ProofTerm | CoqTerm
 type Atoms = list[AtomBase]
 

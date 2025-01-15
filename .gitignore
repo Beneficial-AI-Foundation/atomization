@@ -10,3 +10,6 @@ venv/
 .nia.cache
 .env
 *.ipynb
+.ruff_cache/
+.ssh/
+.pytest_cache/

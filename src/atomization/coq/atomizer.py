@@ -16,6 +16,10 @@ from atomization.coq.types import (
 )
 
 
+def elicit_objective_signature(term: Term) -> str:
+    return ""
+
+
 def atomize(term: Term, context: Atoms) -> AtomBase:
     match term.type:
         case TermType.THEOREM | TermType.LEMMA:
@@ -37,8 +41,20 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
             | TermType.COFIXPOINT
             | TermType.FUNCTION
         ):
-            # raise NotImplementedError
-            return BottomAtom()
+            pattern_defn = (
+                r"(Definition|Fixpoint|CoFixpoint|Function)\s+(\w+)\s*:\s*(.*)"
+            )
+            term_type, name, signature = re.match(
+                pattern_defn, term.step.short_text
+            ).groups()
+            return TheoremAtom(
+                term_type,
+                name,
+                term.step.ast.range.start.line,
+                signature,
+                context,
+                [str(x) for x in term.steps] if hasattr(term, "steps") else [],
+            )
         case TermType.INDUCTIVE | TermType.VARIANT | TermType.COINDUCTIVE:
             pattern_inductive = r"(Inductive|Variant|CoInductive)\s+(\w+)\s*:\s*((?:\w+(?:\s+\w+)*?))\s*:=\s*((?:.|[\r\n])*)"
             term_type, name, _, defn = re.match(
@@ -67,7 +83,7 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
                 )?
                 (?:\s*:\s*(?P<scope>\w+_scope))?  # Capture scope if present
                 \.?                        # Optional period at end
-            """,
+                """,
                 re.VERBOSE,
             )
 
