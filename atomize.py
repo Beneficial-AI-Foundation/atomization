@@ -123,14 +123,16 @@ def atomize_file(
     filtered_symbols = [
         sym for sym in catalog if sym.split(".")[0] not in all_excluded_namespaces
     ]
+    short_filtered_symbols = [sym for sym in filtered_symbols if sym.startswith("Atom_")]
+    print(f"TestType type: {server.expr_type('TestType')}")
     print(f"Filtered symbols length: {len(filtered_symbols)}")
     # Dump filtered symbols to JSON for inspection/debugging
     with Path("/Users/alokbeniwal/atomization/filtered_symbols.json").open("w") as f:
         json.dump(filtered_symbols, f)
     inspect_cache: Dict[str, dict] = {}  # Cache env.inspect results
 
-    for symbol in tqdm.tqdm(filtered_symbols):
-        # print(f"Inspecting {symbol}")
+    for symbol in tqdm.tqdm(short_filtered_symbols):
+        print(f"Inspecting {symbol}")
         try:
             # Cache inspect results as we filter
             inspect_cache[symbol] = server.env_inspect(
@@ -147,7 +149,7 @@ def atomize_file(
     atomized_defs: list[AtomizedDef] = []
     
     # Collect module paths from cached inspect results
-    for symbol in tqdm.tqdm(filtered_symbols):
+    for symbol in tqdm.tqdm(short_filtered_symbols):
         info = inspect_cache[symbol]
 
         module_path = info.get("module", "")
