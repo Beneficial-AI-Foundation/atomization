@@ -196,6 +196,103 @@ def handle_class(lines: list[str], start_idx: int, chunk_order: int) -> tuple[li
     
     return chunks, i, chunk_order
 
+def handle_module(lines: list[str], start_idx: int, chunk_order: int) -> tuple[list[dict], int, int]:
+    chunks = []
+    i = start_idx
+    
+    # Get the module signature
+    module_chunk = [(lines[i].strip(), get_indentation(lines[i]))]
+    i += 1
+    brace_count = 1  # We've seen the opening brace in the module line
+    
+    # Collect module declarations until we hit a method, function, class, etc.
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+            
+        if any(line.strip().startswith(x) for x in ['method', 'function', 'ghost', 'lemma', 'class']):
+            break
+            
+        # Handle import and export declarations as spec+code
+        if line.strip().startswith(('import', 'export')):
+            current_line = [(line.strip(), get_indentation(line))]
+            i += 1
+            while i < len(lines):
+                next_line = lines[i].strip()
+                if not next_line or next_line.startswith(('import', 'export', 'method', 'function', 'class', 'ghost', 'lemma')):
+                    break
+                current_line.append((next_line, get_indentation(lines[i])))
+                i += 1
+            chunks.append({
+                'content': join_lines_with_indentation(current_line),
+                'type': 'spec+code',
+                'order': chunk_order
+            })
+            chunk_order += 1
+            continue
+            
+        # Handle const declarations
+        if line.strip().startswith('const'):
+            module_chunk.append((line.strip(), get_indentation(line)))
+            i += 1
+            continue
+            
+        brace_count += line.count('{')
+        brace_count -= line.count('}')
+        
+        if brace_count == 0:
+            break
+            
+        i += 1
+        
+    # Add the module header and any const declarations as code
+    if module_chunk:
+        chunks.append({
+            'content': join_lines_with_indentation(module_chunk),
+            'type': 'code',
+            'order': chunk_order
+        })
+        chunk_order += 1
+    
+    # Process the rest of the module body
+    while i < len(lines) and brace_count > 0:
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+            
+        if line.strip().startswith('class'):
+            new_chunks, new_i, new_order = handle_class(lines, i, chunk_order)
+            chunks.extend(new_chunks)
+            i = new_i
+            chunk_order = new_order
+            continue
+            
+        if line.strip().startswith(('ghost', 'lemma')):
+            chunk, i = collect_until_closing_brace(lines, i)
+            chunks.append({
+                'content': chunk,
+                'type': 'proof' if line.strip().startswith('lemma') else 'spec',
+                'order': chunk_order
+            })
+            chunk_order += 1
+            continue
+        
+        if line.strip().startswith(('method', 'function')) and not line.strip().startswith('ghost'):
+            new_chunks, new_i, new_order = handle_method_or_function(lines, i, chunk_order)
+            chunks.extend(new_chunks)
+            i = new_i
+            chunk_order = new_order
+            continue
+            
+        brace_count += line.count('{')
+        brace_count -= line.count('}')
+        i += 1
+    
+    return chunks, i, chunk_order
+
 def parse_dafny(content: str) -> list[dict[str, str]]:
     lines = content.split("\n")
     chunks = []
