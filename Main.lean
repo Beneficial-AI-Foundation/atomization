@@ -21,7 +21,6 @@ import Atomization
 -- #eval (`Int).transitivelyUsedConstants
 
 
-
 -- TODO: impl for single `Name`
 -- def getInfoTreesForFile
 --   (path : System.FilePath := "Atomization/Basic.lean")
