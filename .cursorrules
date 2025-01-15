@@ -10,6 +10,9 @@ Then, split into spec (type signatures) and code (definition body). If the spec 
 
 ### Ideas
 
-- [ ] Try `fileMap`
-- [ ] Try `nameMap`
+# source json
 
+```json
+// env.inspect {"name": "fib", "source": true, "dependency": true}
+{"valueDependency":["Nat","Nat.brecOn","Nat.below","fib.match_1","Unit","OfNat.ofNat","instOfNatNat","Nat.succ","HAdd.hAdd","instHAdd","instAddNat"],"value":{"pp":"fun n =>\n  Nat.brecOn n fun n f =>\n    (match (motive := (n : Nat) → Nat.below n → Nat) n with\n      | 0 => fun x => 0\n      | 1 => fun x => 1\n      | n.succ.succ => fun x => x.1 + x.2.1)\n      f"},"typeDependency":["Nat"],"type":{"pp":"Nat → Nat"},"sourceStart":{"line":23,"column":0},"sourceEnd":{"line":27,"column":32},"module":"Atomization.Basic","isUnsafe":false}
+```

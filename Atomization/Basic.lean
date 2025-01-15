@@ -1,16 +1,16 @@
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.FieldSimp
+def g := 1
+-- import Mathlib.Tactic.Ring
+-- import Mathlib.Tactic.Linarith
+-- import Mathlib.Tactic.FieldSimp
 -- import Lean.Meta
 
-def g := 1
 
--- inductive TestType
--- | A
--- | B : TestType
--- | C (x : TestType)
--- | D (n : Nat)
--- deriving Repr
+inductive TestType
+| A
+| B : TestType
+| C (x : TestType)
+| D (n : Nat)
+deriving Repr
 
 
 def f := 2
@@ -71,14 +71,13 @@ def sumUpTo (n : Nat) : Nat := match n with
 
 def fastSumUpTo (n : Nat) : Nat := n * (n + 1) / 2
 
-theorem splitFastSum (n : Nat) : fastSumUpTo (n+1) = n + 1 + fastSumUpTo n := by
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    unfold fastSumUpTo
-    ring_nf
-    #leansearch "mul both sides."
-    sorry
+-- theorem splitFastSum (n : Nat) : fastSumUpTo (n+1) = n + 1 + fastSumUpTo n := by simp [fastSumUpTo]
+--   induction n with
+--   | zero => rfl
+--   | succ n ih =>
+--     unfold fastSumUpTo
+--     ring_nf
+--     sorry
 
     -- calc
     --   (n + 1) * (n + 2) / 2
@@ -87,17 +86,18 @@ theorem splitFastSum (n : Nat) : fastSumUpTo (n+1) = n + 1 + fastSumUpTo n := by
 
 
 
-theorem splitSum (n : Nat) : sumUpTo (n + 1) = n + 1 + sumUpTo n := by
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    simp [sumUpTo]
+theorem split_sum (n : Nat) : sumUpTo (n + 1) = n + 1 + sumUpTo n := by simp [sumUpTo]
 
 
-theorem sumUpTo_eq_fastSumUpTo (n : Nat) : sumUpTo n = fastSumUpTo n := by
-  induction n with
-  | zero => rfl
-  | succ n ih => calc
-    sumUpTo (n + 1) = n + 1 + sumUpTo n := splitSum n
-    _ = n + 1 + fastSumUpTo n := by rw [ih]
-    _ = fastSumUpTo (n + 1) := by splitFastSum (n+1)
+-- theorem sumUpTo_eq_fastSumUpTo (n : Nat) : sumUpTo n = fastSumUpTo n := by
+--   induction n with
+--   | zero => rfl
+--   | succ n ih => calc
+--     sumUpTo (n + 1) = n + 1 + sumUpTo n := splitSum n
+--     _ = n + 1 + fastSumUpTo n := by rw [ih]
+--     _ = fastSumUpTo (n + 1) := by splitFastSum (n+1)
+namespace Test
+  def f := 1
+  def g := 2
+  def h := f + g
+end Test
