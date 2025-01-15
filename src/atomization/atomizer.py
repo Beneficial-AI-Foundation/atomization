@@ -272,11 +272,103 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
 
     return {typ: jsonify_content(typ) for typ in ["spec", "code", "proof", "spec+code"]}
 
+def atomize_code(code_id: int, dry_run: bool = False) -> dict:
+    """
+    Atomize a code entry from the database.
+    
+    Args:
+        code_id: The ID of the code to atomize
+        dry_run: If True, only return the parsed chunks without creating database entries
+    
+    Returns:
+        dict: Results of the atomization attempt
+    """
+    content, existing_package_id = get_code_entry(code_id)
+    
+    if existing_package_id is not None:
+        return {
+            'status': 'exists',
+            'package_id': existing_package_id
+        }
+        
+    if content is None:
+        return {
+            'status': 'error',
+            'message': 'No content found'
+        }
+
+    decoded_content = content.decode("utf-8")
+    code_language_id = get_code_language_id(code_id)
+    
+    if code_language_id == 1:
+        parsed_chunks = atomize_dafny(decoded_content)
+        result = jsonify_vlib(parsed_chunks)
+    elif code_language_id == 3:
+        parsed_chunks = atomize_coq(decoded_content)
+        result = jsonify_vlib(parsed_chunks)
+    else:
+        return {
+            'status': 'error',
+            'message': 'Language not supported yet'
+        }
+    
+    if dry_run:
+        return {
+            'status': 'success',
+            'parsed_chunks': result
+        }
+
+    # Create database entries
+    package_id = create_package_entry(code_id, code_language_id)
+    if not package_id:
+        return {
+            'status': 'error',
+            'message': 'Failed to create package entry'
+        }
+
+    if not create_snippets(package_id, code_language_id, parsed_chunks):
+        return {
+            'status': 'error',
+            'message': 'Failed to create snippets'
+        }
+
+    return {
+        'status': 'success',
+        'package_id': package_id,
+        'parsed_chunks': result
+    }
+
+def delete_package(package_id: int) -> dict:
+    """
+    Delete a package and its related entries.
+    """
+    try:
+        if delete_package_and_cleanup(package_id):
+            return {
+                'status': 'success',
+                'message': f'Successfully deleted package {package_id}',
+                'error': None
+            }
+        return {
+            'status': 'error',
+            'message': f'Failed to delete package {package_id}',
+            'error': 'Package not found or database error'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': str(e),
+            'error': 'Unexpected error'
+        }
 
 def main():
+    """CLI entry point for the atomizer."""
     if len(sys.argv) == 1:
-        print(f"Usage: python atomizer.py <code id>")
-        print(f"Usage: python atomizer.py delete <package_id>")
+        print("Usage: uv run main <code id>")
+        print("Usage: uv run main delete <package_id>")
+        print("Usage: uv run main test")
+        return
+        
     elif sys.argv[1] == "test":
         test_connection()
     elif sys.argv[1] == "delete" and len(sys.argv) == 3:
