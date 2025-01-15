@@ -2,18 +2,17 @@
 import json
 from pathlib import Path
 
-from typing import TypedDict, List, Optional, Set, Dict, Any, Collection
+from typing import Optional, Set, Dict, Any, Collection
 from typing import Literal
 from dataclasses import dataclass, field
-from os import PathLike
-import pantograph
-import re
 import logging
-from pantograph.server import Server
-import tempfile
-import tqdm
 
-#TODO support structures/inductives
+import pantograph
+import tqdm
+import dataclasses_json
+
+from pantograph.server import Server
+# TODO support structures/inductives
 
 type Name = str
 # type Kind = Literal["def", "theorem", "lemma", "example", "structure", "class", "abbrev"]
@@ -22,8 +21,38 @@ type Kind = Literal["def", "theorem"]
 # TODO: Add more builtins
 EXCLUDED_NAMESPACES = frozenset(["Init", "Core", "Lean", "Mathlib"])
 # to exclude stuff like `Nat`, `List`, `Option`, etc.
-COMMON_NAMESPACES = frozenset({"Nat", "List", "Fin","Float","Int","Bool","Int16","Int32","Int64", "Option", "BitVec", "Std","Array","String","IO","UInt16","UInt32","UInt64","_private","_aux","Except","Float32",})
-
+COMMON_NAMESPACES = frozenset(
+    {
+        "Nat",
+        "List",
+        "Fin",
+        "Float",
+        "Int",
+        "Bool",
+        "Int16",
+        "Int32",
+        "Int64",
+        "Option",
+        "BitVec",
+        "Std",
+        "Array",
+        "String",
+        "IO",
+        "UInt16",
+        "UInt32",
+        "UInt64",
+        "_private",
+        "_aux",
+        "Except",
+        "Float32",
+    }
+)
+# ID in JSON schema
+LANG_ID = 2
+# TODO make `lean/` dir with atomization
+# content is put together
+# TODO src/atomization/atomizer.py: line 300, add case, see `run_lean` and make a project with lake new and write
+@dataclasses_json.dataclass_json
 @dataclass
 class AtomizedDef:
     """A single atomized definition with its dependencies and source code"""
@@ -37,8 +66,7 @@ class AtomizedDef:
     value_dependencies: Set[Name] = field(default_factory=set)
     kind: Kind | None = None
     # ref_spec: str | None = None
-    file_path: Path | None = None
-
+    file_path: Path | str | None = None
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -47,6 +75,7 @@ class AtomizedDef:
         return isinstance(other, AtomizedDef) and self.name == other.name
 
 
+@dataclasses_json.dataclass_json
 @dataclass
 class LineColInfo:
     start_line: int
@@ -108,7 +137,9 @@ def extract_source_code(
 
 
 def atomize_file(
-    server: Server, excluded_namespaces: frozenset[str] = EXCLUDED_NAMESPACES, common_namespaces: frozenset[str] = COMMON_NAMESPACES
+    server: Server,
+    excluded_namespaces: frozenset[str] = EXCLUDED_NAMESPACES,
+    common_namespaces: frozenset[str] = COMMON_NAMESPACES,
 ) -> list[AtomizedDef]:
     """
     Atomize a Lean file into its individual sub definitions using Pantograph's env.inspect
@@ -124,13 +155,17 @@ def atomize_file(
     filtered_symbols = [
         sym for sym in catalog if sym.split(".")[0] not in all_excluded_namespaces
     ]
-    short_filtered_symbols = [sym for sym in filtered_symbols if sym.startswith("Atom_")]
-    print(f'short filtered symbols: {short_filtered_symbols}')
+    short_filtered_symbols = [
+        sym for sym in filtered_symbols if sym.startswith("Atom_")
+    ]
+    print(f"short filtered symbols: {short_filtered_symbols}")
     # print(f"TestType type: {server.expr_type('Atom_TestType')}")
     print(f"Filtered symbols length: {len(filtered_symbols)}")
+
     # Dump filtered symbols to JSON for inspection/debugging
     with Path("/Users/alokbeniwal/atomization/filtered_symbols.json").open("w") as f:
         json.dump(filtered_symbols, f)
+
     inspect_cache: Dict[str, dict] = {}  # Cache env.inspect results
 
     for symbol in tqdm.tqdm(short_filtered_symbols):
@@ -147,24 +182,23 @@ def atomize_file(
     with Path("/Users/alokbeniwal/atomization/inspect_cache.json").open("w") as f:
         json.dump(inspect_cache, f)
 
-    
     atomized_defs: list[AtomizedDef] = []
-    
+
     # Collect module paths from cached inspect results
     for symbol in tqdm.tqdm(short_filtered_symbols):
         info = inspect_cache[symbol]
 
         module_path = info.get("module", "")
         # Extract definition info
-        start_line:int|None = info.get("sourceStart", {}).get("line", None)
-        start_col:int|None = info.get("sourceStart", {}).get("column", None)
-        end_line:int|None = info.get("sourceEnd", {}).get("line", None)
-        end_col:int|None = info.get("sourceEnd", {}).get("column", None)
-        
+        start_line: int | None = info.get("sourceStart", {}).get("line", None)
+        start_col: int | None = info.get("sourceStart", {}).get("column", None)
+        end_line: int | None = info.get("sourceEnd", {}).get("line", None)
+        end_col: int | None = info.get("sourceEnd", {}).get("column", None)
+
         if any(v is None for v in [start_line, start_col, end_line, end_col]):
             # skip symbol, it's not actually in the code but auto-generated
             continue
-        
+
         line_col_info = LineColInfo(
             start_line=start_line,
             start_col=start_col,
@@ -177,9 +211,7 @@ def atomize_file(
         type_deps = list(set(info.get("typeDependency", [])))
         value_deps = list(set(info.get("valueDependency", [])))
         # Still need this call to `server` since it uses `expr_type`.
-        kind = extract_kind(
-            symbol, server, inspect_cache
-        ) 
+        kind = extract_kind(symbol, server, inspect_cache)
 
         atom = AtomizedDef(
             name=symbol,
@@ -189,14 +221,13 @@ def atomize_file(
             type_dependencies=set(type_deps),
             value_dependencies=set(value_deps),
             kind=kind,
-            file_path=file_path,
+            file_path=str(file_path),
         )
 
-
         atomized_defs.append(atom)
-
+    with Path("/Users/alokbeniwal/atomization/atomized_defs.json").open("w") as f:
+        json.dump([atom.to_json() for atom in atomized_defs], f)
     return atomized_defs
-
 
 
 def find_def(atom: AtomizedDef | Name, all_atoms: list[AtomizedDef]) -> AtomizedDef:
@@ -319,7 +350,9 @@ def test_atomizer() -> None:
     g_def = find_def("Atom_g", all_atoms)
     print(g_def)
 
-    assert g_def.source_code == "def Atom_g := 1", f"Expected source code to be 'def Atom_g := 1', got {g_def.source_code}"
+    assert g_def.source_code == "def Atom_g := 1", (
+        f"Expected source code to be 'def Atom_g := 1', got {g_def.source_code}"
+    )
     assert g_def.type == "Nat", f"Expected type to be 'Nat', got {g_def.type}"
     assert g_def.kind == "def", f"Expected kind to be 'def', got {g_def.kind}"
 
@@ -327,15 +360,19 @@ def test_atomizer() -> None:
     fg_def = find_def("Atom_fg", all_atoms)
     print(fg_def)
 
-    assert fg_def.source_code == "def Atom_fg := Atom_g + Atom_g", f"Expected source code to be 'def Atom_fg := Atom_g + Atom_g', got {fg_def.source_code}"
-    assert "Atom_g" in fg_def.value_dependencies, f"Expected value dependencies to include 'Atom_g', got {fg_def.value_dependencies}"
+    assert fg_def.source_code == "def Atom_fg := Atom_g + Atom_g", (
+        f"Expected source code to be 'def Atom_fg := Atom_g + Atom_g', got {fg_def.source_code}"
+    )
+    assert "Atom_g" in fg_def.value_dependencies, (
+        f"Expected value dependencies to include 'Atom_g', got {fg_def.value_dependencies}"
+    )
     assert fg_def.kind == "def", f"Expected kind to be 'def', got {fg_def.kind}"
 
     # Test theorem f''
     f2_def = find_def("Atom_f''", all_atoms)
     print(f2_def)
 
-    assert f2_def.type == "2 = 2", f"Expected type to be '2 = 2', got {f2_def.type}"    
+    assert f2_def.type == "2 = 2", f"Expected type to be '2 = 2', got {f2_def.type}"
     assert f2_def.kind == "theorem", f"Expected kind to be 'theorem', got {f2_def.kind}"
 
     # Test ref spec for fib and fibImperative
@@ -345,6 +382,7 @@ def test_atomizer() -> None:
     print(f"fibImperative def: {fib_imp_def}")
 
     print("All tests passed!")
+
 
 if __name__ == "__main__":
     test_atomizer()
