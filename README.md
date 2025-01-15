@@ -1,15 +1,30 @@
 # atomization
 
-## Lean 4 Atomizer
+## Usage
 
-Goal: Extract all the transitive imports of a Lean definition.
+### Dependencies
 
-Extract line/column information for each definition.
+You'll have to have installed nix and [enabled flakes](https://nixos.wiki/wiki/flakes)
 
-Then, split into spec (type signatures) and code (definition body). If the spec is `Prop`-valued, then the code is a proof.
+```base
+nix develop
+uv sync
+```
 
-### Ideas
+To install python version and dependencies
 
-- [ ] Try `fileMap`
-- [ ] Try `nameMap`
+### Atomize
 
+```base
+uv run main <code_id>
+```
+
+Creates a package corresponding to the code and atomizes it into snippets.
+
+### Clean up DB
+
+```base
+uv run main delete <package_id>
+```
+
+Deletes the package with `package_id`, finds the code it belongs to and nullifies that code's `package_id` value, and deletes the atomized snippets with that `package_id`

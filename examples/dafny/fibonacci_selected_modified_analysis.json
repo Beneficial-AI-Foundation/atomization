@@ -1,0 +1,210 @@
+{
+  "code": {
+    "methods": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 11,
+          "start_col": 1,
+          "end_line": 32,
+          "end_col": 2
+        },
+        "content": "method fib_method(n: int) returns (result: int)\n{\n  var i: int := 0;\n  var a: int := 0;\n  var b: int := 1;\n  while i < n\n  {\n    var c := a + b;\n    a := b;\n    b := c;\n    i := i + 1;\n  }\n  result := a;\n}",
+        "parent": null,
+        "context_content": null
+      }
+    ],
+    "executable_functions": []
+  },
+  "spec": {
+    "requires_clauses": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 2,
+          "start_col": 3,
+          "end_line": 2,
+          "end_col": 18
+        },
+        "content": "requires n >= 0",
+        "parent": "fibonacci",
+        "context_content": null
+      },
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 12,
+          "start_col": 3,
+          "end_line": 12,
+          "end_col": 18
+        },
+        "content": "requires n >= 0",
+        "parent": "fib_method",
+        "context_content": null
+      },
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 49,
+          "start_col": 3,
+          "end_line": 49,
+          "end_col": 18
+        },
+        "content": "requires n >= 0",
+        "parent": "FibIsNonNegative",
+        "context_content": null
+      }
+    ],
+    "ensures_clauses": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 13,
+          "start_col": 3,
+          "end_line": 13,
+          "end_col": 33
+        },
+        "content": "ensures result == fibonacci(n)",
+        "parent": "fib_method",
+        "context_content": null
+      },
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 50,
+          "start_col": 3,
+          "end_line": 50,
+          "end_col": 28
+        },
+        "content": "ensures fibonacci(n) >= 0",
+        "parent": "FibIsNonNegative",
+        "context_content": null
+      }
+    ],
+    "reads_clauses": [],
+    "ghost_predicates": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 43,
+          "start_col": 1,
+          "end_line": 46,
+          "end_col": 2
+        },
+        "content": "ghost predicate IsFibonacci(x: int)\n{\n  exists n :: n >= 0 && fibonacci(n) == x\n}",
+        "parent": null,
+        "context_content": null
+      }
+    ],
+    "ghost_functions": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 1,
+          "start_col": 1,
+          "end_line": 8,
+          "end_col": 2
+        },
+        "content": "ghost function fibonacci(n: int): int\n{\n  if n == 0 then 0\n  else if n == 1 then 1\n  else fibonacci(n-1) + fibonacci(n-2)\n}",
+        "parent": null,
+        "context_content": null
+      },
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 36,
+          "start_col": 1,
+          "end_line": 39,
+          "end_col": 2
+        },
+        "content": "ghost function FibNonNegative(n: int): bool\n{\n  forall k :: k >= 0 ==> fibonacci(k) >= 0\n}",
+        "parent": null,
+        "context_content": null
+      }
+    ]
+  },
+  "proof": {
+    "lemmas": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 48,
+          "start_col": 1,
+          "end_line": 61,
+          "end_col": 2
+        },
+        "content": "lemma FibIsNonNegative(n: int)\n{\n  if n <= 1 {\n\n  } else {\n\n    FibIsNonNegative(n-1);\n    FibIsNonNegative(n-2);\n\n  }\n}",
+        "parent": null,
+        "context_content": null
+      }
+    ],
+    "invariant_groups": [
+      {
+        "method": "fib_method",
+        "while_condition": "i < n",
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 11,
+          "start_col": 1,
+          "end_line": 32,
+          "end_col": 2,
+          "content": "method fib_method(n: int) returns (result: int)\n  requires n >= 0\n  ensures result == fibonacci(n)\n{\n  var i: int := 0;\n  var a: int := 0;\n  var b: int := 1;\n  while i < n\n    invariant 0 <= a\n    invariant 0 <= i <= n\n    invariant a == fibonacci(i)\n    invariant b == fibonacci(i + 1)\n    invariant 0 <= b\n    decreases n - i\n  {\n    var c := a + b;\n    a := b;\n    b := c;\n    i := i + 1;\n  }\n  result := a;\n}",
+          "parent": null,
+          "context": null,
+          "context_content": null
+        },
+        "invariants": [
+          {
+            "offset": 176,
+            "content": "0 <= a"
+          },
+          {
+            "offset": 197,
+            "content": "0 <= i <= n"
+          },
+          {
+            "offset": 223,
+            "content": "a == fibonacci(i)"
+          },
+          {
+            "offset": 255,
+            "content": "b == fibonacci(i + 1)"
+          },
+          {
+            "offset": 291,
+            "content": "0 <= b"
+          }
+        ]
+      }
+    ],
+    "decreases_clauses": [
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 3,
+          "start_col": 3,
+          "end_line": 3,
+          "end_col": 14
+        },
+        "content": "decreases n",
+        "parent": "fibonacci",
+        "context_content": null,
+        "context": "ghost_function"
+      },
+      {
+        "location": {
+          "filename": "dafny_files/fibonacci_selected_modified.dfy",
+          "start_line": 24,
+          "start_col": 5,
+          "end_line": 24,
+          "end_col": 20
+        },
+        "content": "decreases n - i",
+        "parent": "fib_method",
+        "context_content": "while i < n",
+        "context": "while_loop"
+      }
+    ],
+    "assertions": []
+  }
+}

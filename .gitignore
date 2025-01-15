@@ -1,5 +1,14 @@
-/.lake
-
-.env
-logs/
+# Python
 __pycache__/
+.venv/
+venv/
+
+.direnv/
+.ipynb_checkpoints/
+*.vo
+.lia.cache
+.nia.cache
+.env
+*.ipynb
+/.lake/
+/logs/
