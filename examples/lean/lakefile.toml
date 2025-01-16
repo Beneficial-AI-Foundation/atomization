@@ -9,10 +9,10 @@ name = "Atomization"
 name = "atomization"
 root = "Main"
 
-[[require]]
-name = "importGraph"
-git = "https://github.com/leanprover-community/import-graph.git"
-rev = "eda37c9bda186b5ea28b4681b38f65fcf5dfe163"
+# [[require]]
+# name = "importGraph"
+# git = "https://github.com/leanprover-community/import-graph.git"
+# rev = "eda37c9bda186b5ea28b4681b38f65fcf5dfe163"
 
 
 # [[require]]
@@ -20,7 +20,7 @@ rev = "eda37c9bda186b5ea28b4681b38f65fcf5dfe163"
 # git = "https://github.com/leanprover-community/mathlib.git"
 # rev = "master"
 
-[[require]]
-name = "lean_extras"
-git = "https://github.com/adamtopaz/lean_extras.git"
-rev = "master"
+# [[require]]
+# name = "lean_extras"
+# git = "https://github.com/adamtopaz/lean_extras.git"
+# rev = "master"

@@ -7,6 +7,10 @@ dependencies = [
     "coqpyt",
     "mysql-connector-python>=9.1.0",
     "python-dotenv>=1.0.1",
+    "pantograph",
+    "tqdm>=4.67.1",
+    "dataclasses-json>=0.6.7",
+    "bidict>=0.23.1",
 ]
 
 [project.scripts]
@@ -21,9 +25,11 @@ packages = ["src/atomization"]
 
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
+pantograph = { git = "https://github.com/lenianiva/PyPantograph", branch = "fixed/v4.16.0-rc1"}
 
 [dependency-groups]
 dev = [
+    "ipykernel>=6.29.5",
     "pytest>=8.3.4",
     "ruff>=0.9.1",
 ]
