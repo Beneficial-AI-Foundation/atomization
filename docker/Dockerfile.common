@@ -1,14 +1,6 @@
-# Builder image for Nix environment
-FROM nixos/nix:latest AS nix-builder
+FROM build-nix as nix
 
-# Enable experimental features for Nix to use flakes
-RUN nix-env -iA nixpkgs.nixFlakes \
-    && echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
-
-RUN nix-shell -p neofetch --run neofetch
-
-# Ubuntu base image for other dependencies
-FROM ubuntu:24.04 AS ubuntu-base
+FROM ubuntu:24.04 AS ubuntu
 
 # Update apt
 RUN apt-get update
@@ -27,9 +19,9 @@ RUN groupadd -r nixbld \
     && for i in $(seq 1 10); do useradd -r -g nixbld -G nixbld -d /var/empty -s /sbin/nologin -c "Nix build user $i" nixbld$i; done
 
 # Copy nix store from nix-builder
-COPY --from=nix-builder /nix /nix
-COPY --from=nix-builder /root/.nix-profile /root/.nix-profile
-COPY --from=nix-builder /etc/nix/nix.conf /etc/nix/nix.conf
+COPY --from=nix /nix /nix
+COPY --from=nix /root/.nix-profile /root/.nix-profile
+COPY --from=nix /etc/nix/nix.conf /etc/nix/nix.conf
 
 # Ensure Nix binaries are in PATH
 ENV PATH=/root/.nix-profile/bin:$PATH

@@ -1,9 +1,24 @@
-version: "3"
 services:
+  nix-base:
+    image: build-nix
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile._nix
+
+  common:
+    image: build-common
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.common
+    depends_on:
+      - nix-base
+
   atomization:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./docker/Dockerfile.atomization
+    depends_on:
+      - common
     volumes:
       - ~/.ssh:/root/.ssh
       - $PWD:/root
