@@ -1,0 +1,33 @@
+FROM build-nix as nix
+
+FROM ubuntu:24.04 AS ubuntu
+
+# Update apt
+RUN apt-get update
+
+# Install nix deps to ubuntu
+RUN apt-get install -y \
+    curl \
+    xz-utils \
+    bzip2 \
+    git \
+    build-essential \
+    ssh \
+    wget
+
+RUN groupadd -r nixbld \
+    && for i in $(seq 1 10); do useradd -r -g nixbld -G nixbld -d /var/empty -s /sbin/nologin -c "Nix build user $i" nixbld$i; done
+
+# Copy nix store from nix-builder
+COPY --from=nix /nix /nix
+COPY --from=nix /root/.nix-profile /root/.nix-profile
+COPY --from=nix /etc/nix/nix.conf /etc/nix/nix.conf
+
+# Ensure Nix binaries are in PATH
+ENV PATH=/root/.nix-profile/bin:$PATH
+ENV NIX_PATH=/nix/var/nix/profiles/per-user/root/channels
+ENV NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+RUN nix-shell -p neofetch --run neofetch
+
+WORKDIR /home/ubuntu

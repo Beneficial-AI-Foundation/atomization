@@ -10,3 +10,7 @@ venv/
 .nia.cache
 .env
 *.ipynb
+
+.bash_history
+.elan/
+.profile

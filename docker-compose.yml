@@ -1,0 +1,28 @@
+services:
+  nix-base:
+    image: build-nix
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile._nix
+
+  common:
+    image: build-common
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.common
+    depends_on:
+      - nix-base
+
+  atomization:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.atomization
+    depends_on:
+      - common
+    volumes:
+      - ~/.ssh:/root/.ssh
+      - $PWD:/root
+    working_dir: /root
+    entrypoint: ["bash"]
+    stdin_open: true
+    tty: true
