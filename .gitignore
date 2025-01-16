@@ -3,6 +3,10 @@ __pycache__/
 .venv/
 venv/
 
-# Dafny
-dafny/*.json
-dafny/dafny_files/*.json
+.direnv/
+.ipynb_checkpoints/
+*.vo
+.lia.cache
+.nia.cache
+.env
+*.ipynb

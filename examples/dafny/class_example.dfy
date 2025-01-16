@@ -21,4 +21,8 @@ class B {
   method M()
     modifies `i
   { i := i + 1; }
+  
+  method N()
+    modifies `i
+  { i := i + 2; }
 }
