@@ -1,5 +1,15 @@
-FROM build-common as common
+FROM common AS common
+COPY --from=atomization-nix /root/.nix-profile /root/.nix-profile
+
+# uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
 # Lean
 RUN curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
 ENV PATH="/root/.elan/bin:${PATH}"
+
+# smoke test
+RUN nix shell nixpkgs#neofetch -c "neofetch"
+
+WORKDIR /home/ubuntu
