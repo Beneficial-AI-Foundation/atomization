@@ -2,10 +2,12 @@ FROM common AS common
 COPY --from=atomization-nix /root/.nix-profile /root/.nix-profile
 
 # uv
+# uv is also in shell.nix, so this may be redundant
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Lean
+# Lean is also in `shell.nix`, so this may be redundant
 RUN curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
 ENV PATH="/root/.elan/bin:${PATH}"
 

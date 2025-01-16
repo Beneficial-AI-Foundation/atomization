@@ -23,7 +23,7 @@
         ];
       greeting = "Atomization";
       shellHook = "echo ${greeting}";
-      name = "coq-atomization";
+      name = "atomization";
     in
     {
       devShells.default = pkgs.mkShell {
