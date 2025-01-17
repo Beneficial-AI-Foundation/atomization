@@ -2,7 +2,7 @@
 # %%
 import json
 from pathlib import Path
-from pprint import pprint 
+
 import random
 import subprocess
 from typing import Collection, TypedDict
@@ -193,7 +193,6 @@ def atomize_project(
         if (
             sym_parts[0] not in all_excluded_namespaces
             and sym_parts[-1] not in EXCLUDED_SUFFIXES
-            and sym_parts[0].startswith("Atom_")  # TODO rm, for debugging
         ):
             filtered_symbols.append(sym)
         # filtered_symbols = [
@@ -402,15 +401,10 @@ def test_atomizer() -> None:
     server = Server(imports=["Init", project_name], project_path=project_path)
     # Test atomization
     all_atoms = atomize_project(server)
-    print(f"Atomized: {len(all_atoms)} atoms")
-    names_and_source = [(atom.name, atom.source_code) for atom in all_atoms]
-    pprint(f"Names and source: {names_and_source}")
+
 
     sorted_atoms = sort_atoms(all_atoms)
-    orig_names = [atom.name for atom in all_atoms]
-    sorted_names = [atom.name for atom in sorted_atoms]
-    pprint(f"Original names: {orig_names}")
-    pprint(f"Sorted names: {sorted_names}")
+
     # Test g definition
     # g_def = find_def("Atom_g", all_atoms)
     # print(g_def)
@@ -586,10 +580,7 @@ def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
 
     all_atoms = atomize_project(server)
     sorted_atoms = sort_atoms(all_atoms)
-    orig_names = [atom.name for atom in all_atoms]
-    sorted_names = [atom.name for atom in sorted_atoms]
-    print(f"Original names: {orig_names}")
-    print(f"Sorted names: {sorted_names}")
+
     schema = atoms_to_schema(sorted_atoms)
 
     return schema
@@ -599,5 +590,3 @@ if __name__ == "__main__":
     test_atomizer()
 
 # %%
-
-
