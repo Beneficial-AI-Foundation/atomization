@@ -62,3 +62,4 @@ namespace Atom_Test
   def g := 2
   def h := f + g
 end Atom_Test
+
