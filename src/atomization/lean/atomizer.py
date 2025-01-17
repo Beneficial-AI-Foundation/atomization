@@ -173,7 +173,7 @@ def atomize_project(
     server: Server,
     excluded_namespaces: frozenset[str] = EXCLUDED_NAMESPACES,
     common_namespaces: frozenset[str] = COMMON_NAMESPACES,
-    verbose: bool = True,
+    verbose: bool = False,
 ) -> list[AtomizedDef]:
     """
     Atomize a Lean file into its individual sub definitions using Pantograph's env.inspect
@@ -400,7 +400,7 @@ def test_atomizer() -> None:
 
     server = Server(imports=["Init", project_name], project_path=project_path)
     # Test atomization
-    all_atoms = atomize_project(server)
+    all_atoms = atomize_project(server, verbose=True)
 
 
     sorted_atoms = sort_atoms(all_atoms)
