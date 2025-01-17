@@ -498,7 +498,9 @@ def sort_atoms(atoms: list[AtomizedDef]) -> list[AtomizedDef]:
     for name, deps in graph.items():
         ts.add(name, *deps)
 
-    # We'll do a layer-by-layer extraction:
+    # Add this line to prepare the sorter
+    ts.prepare()
+
     result_names = []
     while True:
         batch = list(ts.get_ready())  # which nodes are available next
