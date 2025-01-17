@@ -13,5 +13,3 @@ ENV PATH="/root/.elan/bin:${PATH}"
 
 # smoke test
 RUN nix shell nixpkgs#neofetch -c "neofetch"
-
-WORKDIR /home/ubuntu
