@@ -456,7 +456,7 @@ def atoms_to_schema(atoms: list[AtomizedDef]) -> list[Schema]:
     return [
         Schema(
             content=atom.source_code if atom.source_code else "",
-            type="code",
+            type="code" if atom.kind == "def" else "proof",
             order=i,
         )
         for i, atom in enumerate(atoms)
