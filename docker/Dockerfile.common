@@ -29,5 +29,3 @@ ENV NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # smoke test
 RUN nix shell nixpkgs#neofetch -c "neofetch"
-
-WORKDIR /home/ubuntu
