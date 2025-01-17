@@ -21,9 +21,8 @@
           pkgs.nodejs_23
           pkgs.jq
         ];
-      greeting = "Atomization";
-      shellHook = "echo ${greeting}";
       name = "atomization";
+      shellHook = "echo ${name}";
     in
     {
       devShells.default = pkgs.mkShell {
