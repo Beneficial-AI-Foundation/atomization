@@ -12,3 +12,7 @@ venv/
 *.ipynb
 /**/.lake/
 /logs/
+
+.bash_history
+.elan/
+.profile

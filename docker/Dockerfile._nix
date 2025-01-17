@@ -1,0 +1,8 @@
+# Builder image for Nix environment
+FROM nixos/nix:latest AS nix-builder
+
+# Enable experimental features for Nix to use flakes
+RUN nix-env -iA nixpkgs.nixFlakes \
+    && echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+
+RUN nix-shell -p neofetch --run neofetch
