@@ -2,7 +2,7 @@
 # %%
 import json
 from pathlib import Path
-
+from pprint import pprint
 import random
 import subprocess
 from typing import Collection, TypedDict
@@ -23,12 +23,14 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 # TODO support structures/inductives
 # TODO: use this instead of just setting "code" for all atoms.
 type CodeType = Literal["code", "proof", "spec", "spec+code"]
-
+# TODO fix inductive variants by excluding them if their source code matches r"\W+|.*$" (just a match arm).
+# TODO report that structures don't parse to Leni.
 # The name of a symbol in Lean.
 type SymbolName = str
-# type Kind = Literal["def", "theorem", "lemma", "example", "structure", "class", "abbrev"]
+# type Kind = Literal["def", "theorem", "lemma", "example", "structure", "class", "abbrev","inductive"]
 # TODO: Add more kinds
-type Kind = Literal["def", "theorem"]
+# type ProofKind = Literal["theorem","lemma"]
+type Kind = Literal["code", "proof"]
 
 # Builtin namespaces that are already assumed to be imported.
 EXCLUDED_NAMESPACES = frozenset(["Init", "Core", "Lean", "Mathlib"])
@@ -59,27 +61,41 @@ COMMON_NAMESPACES = frozenset(
         "Float32",
     }
 )
-EXCLUDED_SUFFIXES = frozenset(["match_1",
-                               "match_2",
-                               "match_3",
-                               "match_4",
-                               "match_5",
-                               "match_6",
-                               "match_7",
-                               "match_8",
-                               "match_9",
-                               "_sunfold",
-                               "eq_1",
-                               "eq_2",
-                               "eq_3",
-                               "eq_4",
-                               "eq_5",
-                               "eq_6",
-                               "_unsafe_rec",
-                               "rec",
-                               "",
-                           ]
+EXCLUDED_SUFFIXES = frozenset(
+    [
+        "match_1",
+        "match_2",
+        "match_3",
+        "match_4",
+        "match_5",
+        "match_6",
+        "match_7",
+        "match_8",
+        "match_9",
+        "_sunfold",
+        "eq_1",
+        "eq_2",
+        "eq_3",
+        "eq_4",
+        "eq_5",
+        "eq_6",
+        "_unsafe_rec",
+        "rec",
+        "brecOn",
+        "recOn",
+        "casesOn",
+        "binductionOn",
+        "below",
+        "ibelow",
+        "noConfusion",
+        "inj",
+        "injEq",
+        "sizeOf_spec",
+        "noConfusionType",
+        "_sizeOf_inst",
+    ]
 )
+
 
 @dataclasses_json.dataclass_json
 @dataclass
@@ -111,9 +127,6 @@ class AtomizedDef:
         return hash(self.name)
 
 
-
-
-
 def is_builtin(
     name: SymbolName,
     server: Server,
@@ -137,11 +150,27 @@ def extract_kind(
             name=name, print_value=True, print_dependency=True
         )["type"]["pp"]
 
-    type = server.expr_type(type_info)
+    try:
+        type = server.expr_type(type_info)
+        print(f"{type = }")
+    except Exception as e:  # TODO refine exception type
+        error_str = str(e)
+        # Error: unknown universe level '`u'. The [1:] is to drop the backtick.
+        universe_level = error_str.split("'")[1][1:]
+        # probably an inductive, missing universe levels
+        try:
+            type = server.run(
+                "expr.echo", {"expr": type_info, "levels": [universe_level]}
+            )["type"]
+            print(f"{type = }")
+        except Exception as e:
+            print(f"Error 2: {e}")
+            raise e
+
     if type == "Prop":
-        return "theorem"
-    else:  # TODO: Add more kinds
-        return "def"
+        return "proof"
+    else:
+        return "code"
 
 
 def module_to_file_path(module_path: str, project_root: Path) -> Path:
@@ -163,7 +192,7 @@ def extract_source_code(
     # Slice lines from start_line to end_line (1-based -> 0-based)
     relevant_lines = lines[info.start_line - 1 : info.end_line]
     # Truncate the first line by start_col and the last line by end_col+1
-    relevant_lines[0] = relevant_lines[0][info.start_col:]
+    relevant_lines[0] = relevant_lines[0][info.start_col :]
     relevant_lines[-1] = relevant_lines[-1][: info.end_col + 1]
     # Join into one big string
     return "".join(relevant_lines)
@@ -193,6 +222,7 @@ def atomize_project(
         if (
             sym_parts[0] not in all_excluded_namespaces
             and sym_parts[-1] not in EXCLUDED_SUFFIXES
+            and sym.startswith("Atom_")  # TODO rm, for debugging
         ):
             filtered_symbols.append(sym)
         # filtered_symbols = [
@@ -216,9 +246,7 @@ def atomize_project(
 
     for symbol in tqdm.tqdm(filtered_symbols):
         # Cache inspect results as we filter
-        info = server.env_inspect(
-            name=symbol, print_value=True, print_dependency=True
-        )
+        info = server.env_inspect(name=symbol, print_value=True, print_dependency=True)
         # skip builtins more thoroughly
         module_path = info.get("module", "")
         if module_path.split(".")[0] in all_excluded_namespaces:
@@ -402,13 +430,18 @@ def test_atomizer() -> None:
     # Test atomization
     all_atoms = atomize_project(server, verbose=True)
 
-
     sorted_atoms = sort_atoms(all_atoms)
+    pprint(f"{sorted_atoms = }")
+    # see if sorting affected order of atoms
+    orig_names = [x.name for x in all_atoms]
+    sort_names = [x.name for x in sorted_atoms]
+
+    print(f"Original names: {orig_names}")
+    print(f"Sorted names: {sort_names}")
 
     # Test g definition
     # g_def = find_def("Atom_g", all_atoms)
     # print(g_def)
-
 
     # assert g_def.source_code == "def Atom_g := 1", (
     #     f"Expected source code to be 'def Atom_g := 1', got {g_def.source_code}"
@@ -500,6 +533,7 @@ def sort_atoms(atoms: list[AtomizedDef]) -> list[AtomizedDef]:
         batch = list(ts.get_ready())  # which nodes are available next
         if not batch:
             break
+
         # Sort this batch by our tie-breaking rules:
         #  1) Atoms with None file_path come before atoms with a file_path
         #  2) Then lexical sort by file_path
@@ -507,9 +541,9 @@ def sort_atoms(atoms: list[AtomizedDef]) -> list[AtomizedDef]:
         #  4) Finally break ties by atom name
         def batch_key(n: str) -> tuple:
             a = name_to_atom[n]
-            no_file = (a.file_path is None)
+            no_file = a.file_path is None
             fp = str(a.file_path) if a.file_path else ""
-            no_line = (a.line_col_info is None)
+            no_line = a.line_col_info is None
             line = a.line_col_info.start_line if a.line_col_info else 0
             col = a.line_col_info.start_col if a.line_col_info else 0
             return (no_file, fp, no_line, line, col, a.name)
