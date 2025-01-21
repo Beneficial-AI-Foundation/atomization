@@ -16,3 +16,5 @@ venv/
 .bash_history
 .elan/
 .profile
+
+.cursorrules
