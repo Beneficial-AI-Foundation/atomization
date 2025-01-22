@@ -11,6 +11,11 @@ venv/
 .env
 *.ipynb
 
+_temp.v
+
 .bash_history
 .elan/
 .profile
+.config/
+.local/
+.zshrc
