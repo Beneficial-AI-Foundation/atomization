@@ -63,13 +63,13 @@ namespace Atom_Test
   def h := f + g
 end Atom_Test
 
-inductive Atom_TestType : Type u where
-  | A
-  | B (b: Atom_TestType)
-  | C (c: Nat)
+-- inductive Atom_TestType : Type u where
+--   | A
+--   | B (b: Atom_TestType)
+--   | C (c: Nat)
 
-structure Atom_TestStruct where
-  a : Nat
-  b : Atom_TestStruct
-  c : Atom_TestType
-  (d e: Nat → Atom_TestStruct)
+-- structure Atom_TestStruct where
+--   a : Nat
+--   b : Atom_TestStruct
+--   c : Atom_TestType
+--   (d e: Nat → Atom_TestStruct)
