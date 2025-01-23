@@ -333,6 +333,6 @@ def main():
                 print(f"Package already exists: {package_id}")
 
         except ValueError as e:
-            parser.error(f"Invalid input: {str(e)}. Please provide either 'test' or a valid integer ID")
+            parser.error(f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`")
     else:
         parser.print_help()
