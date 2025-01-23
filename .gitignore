@@ -22,3 +22,5 @@ _temp.v
 .config/
 .local/
 .zshrc
+/**/.lake/
+.cursorrules
