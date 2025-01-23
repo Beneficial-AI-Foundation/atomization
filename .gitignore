@@ -13,3 +13,12 @@ venv/
 .ruff_cache/
 .ssh/
 .pytest_cache/
+
+_temp.v
+
+.bash_history
+.elan/
+.profile
+.config/
+.local/
+.zshrc

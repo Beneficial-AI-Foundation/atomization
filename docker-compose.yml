@@ -1,0 +1,35 @@
+services:
+  nix:
+    image: nix
+    build:
+      dockerfile: ./docker/Dockerfile._nix
+  common:
+    image: common
+    build:
+      dockerfile: ./docker/Dockerfile.common
+    depends_on:
+      - nix
+  interactive:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.atomization
+    depends_on:
+      - common
+    volumes:
+      - ~/.ssh:/home/ubuntu/.ssh
+      - $PWD:/home/ubuntu
+    working_dir: /home/ubuntu
+    entrypoint: ["bash"]
+    stdin_open: true
+    tty: true
+  atomization:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.atomization
+    depends_on:
+      - common
+    volumes:
+      - ~/.ssh:/home/ubuntu/.ssh
+      - $PWD:/home/ubuntu
+    working_dir: /home/ubuntu
+    entrypoint: ["./docker/entrypoint.sh"]
