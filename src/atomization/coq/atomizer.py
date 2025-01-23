@@ -3,7 +3,6 @@ import re
 from pathlib import Path
 import json
 from functools import reduce
-from coqpyt.coq.proof_file import ProofFile
 from coqpyt.coq.base_file import CoqFile
 from coqpyt.coq.structs import TermType
 from atomization.coq.types import (
