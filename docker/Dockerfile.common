@@ -14,8 +14,6 @@ RUN apt-get install -y \
     ssh \
     wget
 
-RUN git config --global --add safe.directory /home/ubuntu/.git
-
 RUN groupadd -r nixbld \
     && for i in $(seq 1 10); do useradd -r -g nixbld -G nixbld -d /var/empty -s /sbin/nologin -c "Nix build user $i" nixbld$i; done
 

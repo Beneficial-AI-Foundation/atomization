@@ -45,3 +45,11 @@ The `main` script is bound to the `atomization` service entrypoint
 docker-compose run atomization <code_id>
 docker-compose run atomization delete <package_id>
 ```
+
+### Reproducibility check
+
+Sometimes you want to pass in `--build` to sanity check that the reproducibility is really as good as you think it is
+
+```base
+docker-compose run --remove-orphans --build atomization test
+```
