@@ -36,7 +36,7 @@ Due to the jank (non LTS server), we are using the old `docker-compose` executab
 Test that mysql connection, environment variables, etc are working
 
 ```base
-docker-compose run atomization test
+docker-compose run --remove-orphans atomization test
 ```
 
 The `main` script is bound to the `atomization` service entrypoint

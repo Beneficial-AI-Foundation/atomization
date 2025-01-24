@@ -29,5 +29,5 @@ ENV PATH=/root/.nix-profile/bin:$PATH
 ENV NIX_PATH=/nix/var/nix/profiles/per-user/root/channels
 ENV NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# smoke test
+# Sanity check
 RUN nix shell nixpkgs#neofetch -c "neofetch"
