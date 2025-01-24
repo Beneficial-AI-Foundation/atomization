@@ -1,6 +1,9 @@
 FROM common AS common
 COPY --from=atomization-nix /root/.nix-profile /root/.nix-profile
 
+RUN nix develop --profile /root/.nix-profile-dev
+ENV PATH="/root/.nix-profile-dev/bin:${PATH}"
+
 # uv
 # uv is also in shell.nix, so this may be redundant
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh

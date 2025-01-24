@@ -3,4 +3,4 @@
 set -euo pipefail
 
 # Enter nix shell and execute the command
-exec nix develop --command uv run main "$@"
+exec uv run main "$@"
