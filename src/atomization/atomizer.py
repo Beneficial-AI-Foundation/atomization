@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import argparse
 from pprint import pprint
 from typing import Callable
 from mysql import connector
@@ -10,6 +11,7 @@ from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
 from atomization.lean.atomizer import atomize_lean
 from bidict import bidict
+
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -283,41 +285,49 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Atomize code from the database into snippets"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    if len(sys.argv) == 1:
-        print(f"Usage: python atomizer.py <code id>")
-        print(f"Usage: python atomizer.py delete <package_id>")
-    elif sys.argv[1] == "test":
+    # Test command
+    subparsers.add_parser("test", help="Test database connection")
+
+    # Delete command
+    delete_parser = subparsers.add_parser("delete", help="Delete a package and cleanup")
+    delete_parser.add_argument("package_id", type=int, help="Package ID to delete")
+
+    # Atomize command (default)
+    atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
+    atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
+
+    args = parser.parse_args()
+
+    if args.command == "test" or not args.command:
         test_connection()
-    elif sys.argv[1] == "delete" and len(sys.argv) == 3:
-        print(f"Deleting package {sys.argv[2]}")
-        # run delete_package_and_cleanup
-        package_id = int(sys.argv[2])
-        if delete_package_and_cleanup(package_id):
-            logger.info(f"Successfully deleted package {package_id}")
-    else:
+    elif args.command == "delete":
+        print(f"Deleting package {args.package_id}")
+        if delete_package_and_cleanup(args.package_id):
+            logger.info(f"Successfully deleted package {args.package_id}")
+    elif args.command == "atomize":
         try:
-            code_id = int(sys.argv[1])
-            content, package_id = get_code_entry(code_id)
+            content, package_id = get_code_entry(args.code_id)
 
             if content is not None:
                 decoded_content = content.decode("utf-8")
-                code_language_id = get_code_language_id(code_id)
-                if code_language_id is None:
-                    print(f"No language found for code ID {code_id}")
-                    sys.exit(1)
+                code_language_id = get_code_language_id(args.code_id)
                 if code_language_id == LANG_MAP["dafny"]:
                     parsed_chunks = atomize_dafny(decoded_content)
-                    print(f"Atomizing Dafny code with ID {code_id}")
+                    print(f"Atomizing Dafny code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 elif code_language_id == LANG_MAP["lean"]:
-                    parsed_chunks = atomize_lean(decoded_content, code_id)
+                    parsed_chunks = atomize_lean(decoded_content, args.code_id)
                     # code will sit in dummy project in `lean/` dir
-                    print(f"Atomizing Lean code with ID {code_id}")
+                    print(f"Atomizing Lean code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 elif code_language_id == LANG_MAP["coq"]:
                     parsed_chunks = atomize_coq(decoded_content)
-                    print(f"Atomizing Coq code with ID {code_id}")
+                    print(f"Atomizing Coq code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 else:
                     print(f"Language not supported yet")
@@ -326,7 +336,7 @@ def main():
                 pprint(result)
 
                 # Create package entry
-                package_id = create_package_entry(code_id, code_language_id)
+                package_id = create_package_entry(args.code_id, code_language_id)
                 if package_id:
                     logger.info(f"Successfully created package with ID {package_id}")
                     # Create snippets entries
@@ -339,5 +349,9 @@ def main():
             else:
                 print(f"Package already exists: {package_id}")
 
-        except ValueError:
-            print("Please provide either 'test' or a valid integer ID")
+        except ValueError as e:
+            parser.error(
+                f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`"
+            )
+    else:
+        parser.print_help()

@@ -1,6 +1,5 @@
-FROM build-nix as nix
-
-FROM ubuntu:24.04 AS ubuntu
+FROM nix AS nix
+FROM ubuntu:24.04
 
 # Update apt
 RUN apt-get update
@@ -28,6 +27,5 @@ ENV PATH=/root/.nix-profile/bin:$PATH
 ENV NIX_PATH=/nix/var/nix/profiles/per-user/root/channels
 ENV NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-RUN nix-shell -p neofetch --run neofetch
-
-WORKDIR /home/ubuntu
+# smoke test
+RUN nix shell nixpkgs#neofetch -c "neofetch"

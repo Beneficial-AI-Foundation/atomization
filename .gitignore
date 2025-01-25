@@ -13,8 +13,13 @@ venv/
 /**/.lake/
 /logs/
 
+_temp.v
+
 .bash_history
 .elan/
 .profile
-
+.config/
+.local/
+.zshrc
+/**/.lake/
 .cursorrules
