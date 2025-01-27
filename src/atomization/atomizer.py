@@ -238,30 +238,34 @@ def delete_package_and_cleanup(package_id: int):
         logger.error(f"Database error: {e}")
         return False
 
+
 def sort_dafny_chunks(result: dict) -> list[dict]:
     """
     Takes a dictionary of categorized chunks and returns a flat list sorted by order
-    
+
     Args:
-        result: Dictionary with keys 'code', 'proof', 'spec', 'spec+code', 
+        result: Dictionary with keys 'code', 'proof', 'spec', 'spec+code',
                where each value is a list of dicts with 'content' and 'order' keys
-    
+
     Returns:
         List of dictionaries with 'content', 'order', and 'type' keys, sorted by order
     """
     # Create a flat list of all chunks with their types
     all_chunks = []
-    
+
     for chunk_type in ["code", "proof", "spec", "spec+code"]:
         for chunk in result.get(chunk_type, []):
-            all_chunks.append({
-                "content": chunk["content"],
-                "order": chunk["order"],
-                "type": chunk_type
-            })
-    
+            all_chunks.append(
+                {
+                    "content": chunk["content"],
+                    "order": chunk["order"],
+                    "type": chunk_type,
+                }
+            )
+
     # Sort by order
     return sorted(all_chunks, key=lambda x: x["order"])
+
 
 def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
     def jsonify_content(typ: str) -> list:
@@ -275,29 +279,31 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Atomize code from the database into snippets')
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
+    parser = argparse.ArgumentParser(
+        description="Atomize code from the database into snippets"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
     # Test command
-    subparsers.add_parser('test', help='Test database connection')
+    subparsers.add_parser("test", help="Test database connection")
 
     # Delete command
-    delete_parser = subparsers.add_parser('delete', help='Delete a package and cleanup')
-    delete_parser.add_argument('package_id', type=int, help='Package ID to delete')
-    
+    delete_parser = subparsers.add_parser("delete", help="Delete a package and cleanup")
+    delete_parser.add_argument("package_id", type=int, help="Package ID to delete")
+
     # Atomize command (default)
-    atomize_parser = subparsers.add_parser('atomize', help='Atomize code with given ID')
-    atomize_parser.add_argument('code_id', type=int, help='Code ID to atomize')
+    atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
+    atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
 
     args = parser.parse_args()
 
-    if args.command == 'test' or not args.command:
+    if args.command == "test" or not args.command:
         test_connection()
-    elif args.command == 'delete':
+    elif args.command == "delete":
         print(f"Deleting package {args.package_id}")
         if delete_package_and_cleanup(args.package_id):
             logger.info(f"Successfully deleted package {args.package_id}")
-    elif args.command == 'atomize':
+    elif args.command == "atomize":
         try:
             content, package_id = get_code_entry(args.code_id)
 
@@ -313,7 +319,7 @@ def main():
                     print(f"Atomizing Coq code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 else:
-                    print(f"Language not supported yet")
+                    print("Language not supported yet")
                     sys.exit(1)
 
                 pprint(result)
@@ -333,6 +339,8 @@ def main():
                 print(f"Package already exists: {package_id}")
 
         except ValueError as e:
-            parser.error(f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`")
+            parser.error(
+                f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`"
+            )
     else:
         parser.print_help()
