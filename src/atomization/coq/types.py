@@ -19,8 +19,8 @@ class BottomAtom(AtomBase):
     def jsonify(self) -> dict:
         return json.loads("null")
 
-    def jsonify_vlib(self) -> dict:
-        return self.jsonify()
+    def jsonify_vlib(self) -> list:
+        return [self.jsonify()]
 
 
 @dataclass
@@ -77,6 +77,58 @@ class NotationAtom(AtomBase):
 
     def jsonify_vlib(self) -> list:
         return []
+
+
+@dataclass
+class DefinitionAtom(AtomBase):
+    termtype: str
+    identifier: str
+    lineno: int
+    signature: str
+    code: str
+    deps: list[AtomBase]
+
+    def jsonify(self) -> dict:
+        return {
+            "termtype": self.termtype,
+            "identifier": self.identifier,
+            "lineno": self.lineno,
+            "signature": self.signature,
+            "code": self.code,
+            "deps": [dep.jsonify() for dep in self.deps],
+        }
+
+    def jsonify_vlib(self) -> list:
+        return [
+            {"content": self.signature, "type": "spec", "order": None},
+            {"content": self.code, "type": "code", "order": None},
+        ]
+
+
+@dataclass
+class InductiveAtom(AtomBase):
+    termtype: str  # Inductive, CoInductive, or Variant
+    identifier: str
+    lineno: int
+    signature: str  # The type (e.g., "Set" or "Type")
+    constructors: str  # The constructor definitions
+    deps: list[AtomBase]
+
+    def jsonify(self) -> dict:
+        return {
+            "termtype": self.termtype,
+            "identifier": self.identifier,
+            "lineno": self.lineno,
+            "signature": self.signature,
+            "constructors": self.constructors,
+            "deps": [dep.jsonify() for dep in self.deps],
+        }
+
+    def jsonify_vlib(self) -> list:
+        return [
+            {"content": self.signature, "type": "spec", "order": None},
+            {"content": self.constructors, "type": "constructors", "order": None},
+        ]
 
 
 type Term = ProofTerm | CoqTerm

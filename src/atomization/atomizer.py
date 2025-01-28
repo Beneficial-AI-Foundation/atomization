@@ -330,7 +330,7 @@ def main():
                     print(f"Atomizing Coq code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 else:
-                    print(f"Language not supported yet")
+                    print("Language not supported yet")
                     sys.exit(1)
 
                 pprint(result)

@@ -1,7 +1,7 @@
 FROM nixos/nix:latest AS nix-builder
 
 # Enable experimental features for Nix to use flakes
-RUN nix-env -iA nixpkgs.nixFlakes \
-    && echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
 
+# Sanity check
 RUN nix --version && nix shell nixpkgs#neofetch -c "neofetch"

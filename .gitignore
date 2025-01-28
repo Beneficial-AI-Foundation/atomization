@@ -12,6 +12,9 @@ venv/
 *.ipynb
 /**/.lake/
 /logs/
+.ruff_cache/
+.ssh/
+.pytest_cache/
 
 _temp.v
 

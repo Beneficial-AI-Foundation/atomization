@@ -1,10 +1,9 @@
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
 import json
 from functools import reduce
-from coqpyt.coq.proof_file import ProofFile
+from coqpyt.coq.base_file import CoqFile
 from coqpyt.coq.structs import TermType
 from atomization.coq.types import (
     Atomizer,
@@ -14,7 +13,14 @@ from atomization.coq.types import (
     BottomAtom,
     TheoremAtom,
     NotationAtom,
+    DefinitionAtom,
+    InductiveAtom,
 )
+
+
+def elicit_objective_signature(term: Term) -> str:
+    """TODO"""
+    return ""
 
 
 def atomize(term: Term, context: Atoms) -> AtomBase:
@@ -38,20 +44,52 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
             | TermType.COFIXPOINT
             | TermType.FUNCTION
         ):
-            # raise NotImplementedError
-            return BottomAtom()
-        case TermType.INDUCTIVE | TermType.VARIANT | TermType.COINDUCTIVE:
-            pattern_inductive = r"(Inductive|Variant|CoInductive)\s+(\w+)\s*:\s*((?:\w+(?:\s+\w+)*?))\s*:=\s*((?:.|[\r\n])*)"
-            term_type, name, _, defn = re.match(
-                pattern_inductive, term.step.short_text
-            ).groups()
-            return TheoremAtom(
+            text = term.step.short_text.strip()
+            if ":=" not in text:
+                return BottomAtom()
+            
+            # Split into declaration and body
+            decl, body = text.split(":=", 1)
+            
+            # Extract term type and identifier
+            words = decl.split()
+            term_type = words[0]  # Definition, Fixpoint, etc.
+            identifier = words[1]  # The name
+            
+            # Everything between the identifier and := is the signature
+            signature = decl[decl.find(identifier) + len(identifier):].strip()
+            
+            return DefinitionAtom(
                 term_type,
-                name,
+                identifier,
                 term.step.ast.range.start.line,
-                defn,
+                signature,
+                body.strip(),
                 context,
-                [str(x) for x in term.steps] if hasattr(term, "steps") else [],
+            )
+        case TermType.INDUCTIVE | TermType.VARIANT | TermType.COINDUCTIVE:
+            text = term.step.short_text.strip()
+            if ":=" not in text:
+                return BottomAtom()
+            
+            # Split into declaration and constructors
+            decl, constructors = text.split(":=", 1)
+            
+            # Extract term type and identifier
+            words = decl.split()
+            term_type = words[0]  # Inductive, CoInductive, or Variant
+            identifier = words[1]  # The name
+            
+            # Everything between the identifier and := is the signature
+            signature = decl[decl.find(identifier) + len(identifier):].strip()
+            
+            return InductiveAtom(
+                term_type,
+                identifier,
+                term.step.ast.range.start.line,
+                signature,
+                constructors.strip(),
+                context,
             )
         case TermType.NOTATION:
             notation_pattern = re.compile(
@@ -68,7 +106,7 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
                 )?
                 (?:\s*:\s*(?P<scope>\w+_scope))?  # Capture scope if present
                 \.?                        # Optional period at end
-            """,
+                """,
                 re.VERBOSE,
             )
 
@@ -137,11 +175,11 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
 
 class CoqAtomizer(Atomizer):
     def atomize(self) -> Atoms:
-        with ProofFile(str(self.filename)) as pf:
-            pf.run()
+        with CoqFile(str(self.filename)) as cf:
+            cf.run()
             return [
-                atomize(proof, [atomize(item, []) for item in proof.context])
-                for proof in pf.proofs
+                atomize(item, [])
+                for _, item in cf.context.terms.items()
             ]
 
     def jsonify(self) -> str:

@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 main = "atomization.atomizer:main"
+dry = "atomization.atomizer_dry:main"
 
 [build-system]
 requires = ["hatchling"]

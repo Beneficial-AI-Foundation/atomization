@@ -1,14 +1,23 @@
+networks:
+  atomization-network: {}
+
 services:
   nix:
     image: nix
     build:
       dockerfile: ./docker/Dockerfile._nix
+    networks:
+      - atomization-network
+
   common:
     image: common
     build:
       dockerfile: ./docker/Dockerfile.common
     depends_on:
       - nix
+    networks:
+      - atomization-network
+
   interactive:
     build:
       context: .
@@ -22,7 +31,18 @@ services:
     entrypoint: ["bash"]
     stdin_open: true
     tty: true
+    networks:
+      - atomization-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   atomization:
+    networks:
+      - atomization-network
+    environment:
+      DB_HOST: 172.17.0.1
+    env_file:
+      - .env
     build:
       context: .
       dockerfile: ./docker/Dockerfile.atomization
