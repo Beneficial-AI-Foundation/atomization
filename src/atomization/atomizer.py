@@ -3,11 +3,11 @@ import os
 import sys
 import argparse
 from pprint import pprint
-from mysql import connector
-from mysql.connector import Error as MysqlConnectorError
 from dotenv import load_dotenv
 from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
+from sqlalchemy import create_engine, text, MetaData
+from sqlalchemy.exc import SQLAlchemyError
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -19,46 +19,39 @@ DB_HOST = os.environ.get("DB_HOST", "localhost")
 
 languages = {1: "dafny", 2: "lean", 3: "coq", 4: "isabelle", 5: "metamath"}
 
+# You can optionally reflect the existing tables
+metadata = MetaData()
 
 class DBConnection:
     def __init__(
         self, host=DB_HOST, user="root", password=DB_PASSWORD, database="verilib"
     ):
-        self.config = {
-            "host": host,
-            "user": user,
-            "password": password,
-            "database": database,
-        }
-        self.conn = None
+        self.url = f"mysql+mysqlconnector://{user}:{password}@{host}/{database}"
+        self.engine = None
 
     def __enter__(self):
         try:
-            self.conn = connector.connect(**self.config)
-            return self.conn
-        except MysqlConnectorError as e:
+            self.engine = create_engine(self.url)
+            return self.engine.connect()
+        except SQLAlchemyError as e:
             logger.error(f"Error connecting to MySQL: {e}")
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn and self.conn.is_connected():
-            self.conn.close()
+        if self.engine:
+            self.engine.dispose()
 
 
 def test_connection():
     try:
         with DBConnection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            # Get all table names
-            cursor.execute("SHOW TABLES")
+            cursor = conn.execute("SHOW TABLES")
             tables = cursor.fetchall()
             print("Database tables:")
             for table in tables:
                 print(f"- {list(table.values())[0]}")
 
-            # Sample some data from codes table
-            cursor.execute("SELECT id, package_id FROM codes LIMIT 5")
+            cursor = conn.execute("SELECT id, package_id FROM codes LIMIT 5")
             codes = cursor.fetchall()
             print("\nSample codes entries:")
             for code in codes:
@@ -66,31 +59,31 @@ def test_connection():
 
             return True
 
-    except MysqlConnectorError as e:
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return False
 
 
-def get_code_entry(code_id: int):
+def get_code_entry(code_id: int) -> tuple[str | None, str | None]:
     try:
         with DBConnection() as conn:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM codes WHERE id = %s", (code_id,))
-            code = cursor.fetchone()
-            if code:
-                if code["package_id"] is not None:
-                    print(f"Note: This code is package {code['package_id']}")
-                    return None, code["package_id"]
-                if code["text"] is None:
+            # Using text() for raw SQL
+            result = conn.execute(
+                text("SELECT * FROM codes WHERE id = :code_id"),
+                {"code_id": code_id}
+            ).mappings().first()
+            
+            if result:
+                if result["package_id"] is not None:
+                    print(f"Note: This code is package {result['package_id']}")
+                    return None, result["package_id"]
+                if result["text"] is None:
                     print(f"No content found for code ID {code_id}")
                     return None, None
-                print(f"Note: This is the content: {code['text']}")
-                return code["text"], None
-            else:
-                print(f"No code found with ID {code_id}")
-                return None, None
+                return result["text"], None
+            return None, None
 
-    except MysqlConnectorError as e:
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return None, None
 
@@ -98,15 +91,14 @@ def get_code_entry(code_id: int):
 def get_code_language_id(code_id: int):
     try:
         with DBConnection() as conn:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT language_id FROM codes WHERE id = %s", (code_id,))
+            cursor = conn.execute("SELECT language_id FROM codes WHERE id = %s", (code_id,))
             code = cursor.fetchone()
             if code:
                 return code["language_id"]
             else:
                 logger.error(f"No code found with ID {code_id}")
                 return None
-    except MysqlConnectorError as e:
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return None
 
@@ -114,52 +106,54 @@ def get_code_language_id(code_id: int):
 def create_package_entry(code_id: int, code_language_id: int):
     try:
         with DBConnection() as conn:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM codes WHERE id = %s", (code_id,))
-            original_code = cursor.fetchone()
+            # Get original code
+            code_result = conn.execute(
+                text("SELECT * FROM codes WHERE id = :code_id"),
+                {"code_id": code_id}
+            ).mappings().first()
 
-            if not original_code:
+            if not code_result:
                 logger.error(f"No code found with ID {code_id}")
                 return None
 
+            # Build description
             description = None
-            if original_code.get("summary") and original_code.get("description"):
-                description = (
-                    f"{original_code['summary']}: {original_code['description']}"
-                )
-            elif original_code.get("summary"):
-                description = original_code["summary"]
-            elif original_code.get("description"):
-                description = original_code["description"]
+            if code_result.get("summary") and code_result.get("description"):
+                description = f"{code_result['summary']}: {code_result['description']}"
+            elif code_result.get("summary"):
+                description = code_result["summary"]
+            elif code_result.get("description"):
+                description = code_result["description"]
 
-            insert_query = """
-            INSERT INTO packages 
-            (code_id, language_id, description, url, timestamp, name)
-            VALUES (%s, %s, %s, %s, NOW(), %s)
-            """
-
-            cursor.execute(
-                insert_query,
-                (
-                    code_id,
-                    code_language_id,
-                    description,
-                    original_code.get("url"),
-                    original_code.get("filename"),
-                ),
+            # Insert new package
+            result = conn.execute(
+                text("""
+                INSERT INTO packages 
+                (code_id, language_id, description, url, timestamp, name)
+                VALUES (:code_id, :language_id, :description, :url, NOW(), :name)
+                """),
+                {
+                    "code_id": code_id,
+                    "language_id": code_language_id,
+                    "description": description,
+                    "url": code_result.get("url"),
+                    "name": code_result.get("filename")
+                }
             )
+            
+            package_id = result.lastrowid
 
-            package_id = cursor.lastrowid
-
-            # Update codes table with new package_id
-            cursor.execute(
-                "UPDATE codes SET package_id = %s WHERE id = %s", (package_id, code_id)
+            # Update codes table
+            conn.execute(
+                text("UPDATE codes SET package_id = :package_id WHERE id = :code_id"),
+                {"package_id": package_id, "code_id": code_id}
             )
 
             conn.commit()
-            logger.info(f"Created package with ID {package_id}")
+            logger.info(f"created package with package_id {package_id}")
             return package_id
-    except MysqlConnectorError as e:
+
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return None
 
@@ -167,7 +161,8 @@ def create_package_entry(code_id: int, code_language_id: int):
 def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list):
     try:
         with DBConnection() as conn:
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.execute("SELECT * FROM snippets WHERE package_id = %s", (package_id,))
+            existing_snippets = cursor.fetchall()
 
             # Map chunk types to type_ids
             type_map = {
@@ -177,29 +172,28 @@ def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list)
                 "spec+code": 4,  # For method/function headers use type_id 4
             }
 
-            insert_query = """
-            INSERT INTO snippets 
-            (package_id, language_id, type_id, text, sortorder, timestamp)
-            VALUES (%s, %s, %s, %s, %s, NOW())
-            """
-
             for chunk in parsed_chunks:
-                cursor.execute(
-                    insert_query,
-                    (
-                        package_id,
-                        code_language_id,
-                        type_map[chunk["type"]],
-                        chunk["content"],
-                        chunk["order"],
-                    ),
-                )
+                if (chunk["content"], chunk["type"]) not in existing_snippets:
+                    conn.execute(
+                        text("""
+                        INSERT INTO snippets 
+                        (package_id, language_id, type_id, text, sortorder, timestamp)
+                        VALUES (:package_id, :language_id, :type_id, :text, :sortorder, NOW())
+                        """),
+                        {
+                            "package_id": package_id,
+                            "language_id": code_language_id,
+                            "type_id": type_map[chunk["type"]],
+                            "text": chunk["content"],
+                            "sortorder": chunk["order"]
+                        }
+                    )
 
             conn.commit()
             logger.info(f"Created snippets for package {package_id}")
             return True
 
-    except MysqlConnectorError as e:
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return False
 
@@ -207,26 +201,23 @@ def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list)
 def delete_package_and_cleanup(package_id: int):
     try:
         with DBConnection() as conn:
-            cursor = conn.cursor(dictionary=True)
-
-            # Get code_id for the package
-            cursor.execute("SELECT code_id FROM packages WHERE id = %s", (package_id,))
+            cursor = conn.execute("SELECT code_id FROM packages WHERE id = %s", (package_id,))
             package = cursor.fetchone()
             if not package:
                 logger.error(f"No package found with ID {package_id}")
                 return False
 
             # Update code.package_id to NULL
-            cursor.execute(
-                "UPDATE codes SET package_id = NULL WHERE id = %s",
-                (package["code_id"],),
+            conn.execute(
+                text("UPDATE codes SET package_id = NULL WHERE id = :code_id"),
+                {"code_id": package["code_id"]}
             )
 
             # Delete snippets
-            cursor.execute("DELETE FROM snippets WHERE package_id = %s", (package_id,))
+            conn.execute("DELETE FROM snippets WHERE package_id = %s", (package_id,))
 
             # Delete package
-            cursor.execute("DELETE FROM packages WHERE id = %s", (package_id,))
+            conn.execute("DELETE FROM packages WHERE id = %s", (package_id,))
 
             conn.commit()
             logger.info(
@@ -234,7 +225,7 @@ def delete_package_and_cleanup(package_id: int):
             )
             return True
 
-    except MysqlConnectorError as e:
+    except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return False
 
