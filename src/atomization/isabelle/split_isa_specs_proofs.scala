@@ -13,15 +13,6 @@ object Test_Thy_Parser {
   }
 
   private def is_proof(span: Command_Span.Span, keywords: Keyword.Keywords): Boolean = {
-    /*
-    println(span)
-    println(span.name)
-    println("--end name--")
-    println(keywords.kinds.get(span.name))
-    println("--end kind--")
-    println(Keyword.proof)
-    println("--end Keyword.proof--")
-    */
     if (span.toString().contains("malformed")) {
         println(s"Warning: Malformed span detected: ${span}")
       }
@@ -50,6 +41,14 @@ object Test_Thy_Parser {
     File.write(path, content.toString)
   }
 
+  private def create_root_file(theory_name: String, directory: Path): Unit = {
+    val root_content = s"""session Test = HOL +
+      theories
+      $theory_name"""
+    val root_path = directory + Path.explode("ROOT")
+    File.write(root_path, root_content)
+  }
+
   def main(args: Array[String]): Unit = {
     if (args.length != 1) {
       println("Usage: isabelle scala -e 'split_isa_spec_proofs.scala' <theory_file.thy>")
@@ -74,6 +73,7 @@ object Test_Thy_Parser {
       ("=", Keyword.Spec()), 
       ("and", Keyword.Spec()),
       ("[code]", Keyword.Spec()),
+      ("export_code", Keyword.Spec(kind = Keyword.THY_DEFN, tags = List("export_code"))),
       //("begin", Keyword.Spec(kind = Keyword.QUASI_COMMAND)),
       ("text", Keyword.Spec(kind = Keyword.DOCUMENT_BODY)),
       ("fun", Keyword.Spec(kind = Keyword.THY_DEFN, tags = List("fun"))),
@@ -98,8 +98,8 @@ object Test_Thy_Parser {
 
 
     // Separate definitions and proofs
-    val definitions = spans.filter(span => is_definition(span, thy_syntax.keywords))
-    val proofs = spans.filter(span => is_proof(span, thy_syntax.keywords))
+    val (definitions, proofs) = spans.partition(span => is_definition(span, thy_syntax.keywords))
+    val generates_code = spans.exists(_.name == "export_code")
 
     // Generate output files
     val base_path = thy_file.expand.implode
@@ -108,6 +108,15 @@ object Test_Thy_Parser {
 
     write_spans(def_path, definitions)
     write_spans(proof_path, proofs)
+
+    if (generates_code) {
+      val theory_name = thy_file.base.implode.replaceAll("\\.thy$", "")
+      create_root_file(theory_name, thy_file.dir)
+      val export_command = s"isabelle export -d . -x *:** Test"
+      val process = Runtime.getRuntime.exec(export_command)
+      process.waitFor()
+      println(s"Executed command: $export_command")
+    }
 
     // Report results
     println(s"\nProcessed theory file: ${thy_file}")

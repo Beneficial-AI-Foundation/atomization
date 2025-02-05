@@ -1,8 +1,11 @@
 import subprocess
 import sys
+import os
 
 def run_isabelle_scala(theory_file):
-    command = ['isabelle', 'scala', '-explain', 'split_isa_specs_proofs.scala', theory_file]
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    scala_file = os.path.join(script_dir, 'split_isa_specs_proofs.scala')
+    command = ['isabelle', 'scala', '-explain', scala_file, theory_file]
     result = subprocess.run(command, capture_output=True, text=True)
     print(result.stdout)
     print(result.stderr, file=sys.stderr)
