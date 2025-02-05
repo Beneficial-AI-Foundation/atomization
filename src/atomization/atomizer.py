@@ -3,11 +3,14 @@ import os
 import sys
 import argparse
 from pprint import pprint
+from typing import Callable
 from mysql import connector
 from mysql.connector import Error as MysqlConnectorError
 from dotenv import load_dotenv
 from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
+from atomization.lean.atomizer import atomize_lean
+from bidict import bidict
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +20,10 @@ logger = logging.getLogger(__name__)
 DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 
-languages = {1: "dafny", 2: "lean", 3: "coq", 4: "isabelle", 5: "metamath"}
+# This is a bidirectional map between language names and their IDs in the database because they're supposed to be unique.
+LANG_MAP: bidict[str, int] = bidict(
+    {"dafny": 1, "lean": 2, "coq": 3, "isabelle": 4, "metamath": 5}
+)
 
 
 class DBConnection:
@@ -95,7 +101,7 @@ def get_code_entry(code_id: int):
         return None, None
 
 
-def get_code_language_id(code_id: int):
+def get_code_language_id(code_id: int) -> int | None:
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
@@ -310,11 +316,16 @@ def main():
             if content is not None:
                 decoded_content = content.decode("utf-8")
                 code_language_id = get_code_language_id(args.code_id)
-                if code_language_id == 1:
+                if code_language_id == LANG_MAP["dafny"]:
                     parsed_chunks = atomize_dafny(decoded_content)
                     print(f"Atomizing Dafny code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
-                elif code_language_id == 3:
+                elif code_language_id == LANG_MAP["lean"]:
+                    parsed_chunks = atomize_lean(decoded_content, args.code_id)
+                    # code will sit in dummy project in `lean/` dir
+                    print(f"Atomizing Lean code with ID {args.code_id}")
+                    result = jsonify_vlib(parsed_chunks)
+                elif code_language_id == LANG_MAP["coq"]:
                     parsed_chunks = atomize_coq(decoded_content)
                     print(f"Atomizing Coq code with ID {args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
