@@ -47,8 +47,8 @@ class TheoremAtom(AtomBase):
 
     def jsonify_vlib(self) -> list:
         return [
-            {"content": self.spec, "type": "spec", "order": None},
-            {"content": "".join(self.proof), "type": "proof", "order": None},
+            {"content": self.spec, "type": "spec", "order": self.lineno},
+            {"content": "".join(self.proof), "type": "proof", "order": self.lineno},
         ]
 
 
@@ -100,8 +100,8 @@ class DefinitionAtom(AtomBase):
 
     def jsonify_vlib(self) -> list:
         return [
-            {"content": self.signature, "type": "spec", "order": None},
-            {"content": self.code, "type": "code", "order": None},
+            {"content": self.signature, "type": "spec", "order": self.lineno},
+            {"content": self.code, "type": "code", "order": self.lineno},
         ]
 
 
@@ -126,8 +126,8 @@ class InductiveAtom(AtomBase):
 
     def jsonify_vlib(self) -> list:
         return [
-            {"content": self.signature, "type": "spec", "order": None},
-            {"content": self.constructors, "type": "constructors", "order": None},
+            {"content": self.signature, "type": "spec", "order": self.lineno},
+            {"content": self.constructors, "type": "constructors", "order": self.lineno},
         ]
 
 
