@@ -12,6 +12,13 @@ dependencies = [
 [project.scripts]
 main = "atomization.atomizer:main"
 dry = "atomization.atomizer_dry:main"
+test = "pytest:main"  
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "ruff>=0.9.1",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -23,8 +30,9 @@ packages = ["src/atomization"]
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
 
-[dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-    "ruff>=0.9.1",
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+pythonpath = [
+    "src"
 ]

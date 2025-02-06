@@ -20,9 +20,10 @@ jobs:
       - name: Nix cache
         uses: DeterminateSystems/flakehub-cache-action@main
       - name: Install packages
-        run: uv sync
+        run: |
+          uv sync
       - name: Check lint
         run: uv run ruff check .
-      - name: Run tests in Nix shell
+      - name: Run tests
         run: |
-          nix develop --command bash -c "uv run pytest"
+          uv run test
