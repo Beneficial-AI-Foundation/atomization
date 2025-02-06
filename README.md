@@ -13,6 +13,24 @@ uv sync
 
 To install python version and dependencies
 
+### Development Setup
+
+After installing dependencies, install the development packages:
+
+```base
+uv pip install -e ".[dev]"
+```
+
+### Testing
+
+Run the test suite:
+
+```
+uv run test
+```
+
+Tests are located in the `test/` directory, mirroring the structure of `src/`
+
 ### Atomize
 
 ```base
