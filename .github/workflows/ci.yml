@@ -21,12 +21,9 @@ jobs:
         uses: DeterminateSystems/flakehub-cache-action@main
       - name: Install packages
         run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install -e ".[dev]"
+          uv sync
       - name: Check lint
         run: uv run ruff check .
       - name: Run tests
         run: |
-          source .venv/bin/activate
           uv run test
