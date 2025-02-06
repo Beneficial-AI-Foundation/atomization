@@ -164,17 +164,20 @@ def create_package_entry(code_id: int, code_language_id: int):
         return None
 
 
-def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list):
+def create_snippets(package_id: int, code_language_id: int, result: dict):
+    """
+    Create snippets from the jsonified result dictionary
+    """
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
 
             # Map chunk types to type_ids
             type_map = {
-                "spec": 1,  # Assuming spec entries with type_id 1
-                "code": 2,  # Assuming code entries with type_id 2
-                "proof": 3,  # Assuming proofs use type_id 3
-                "spec+code": 4,  # For method/function headers use type_id 4
+                "spec": 1,
+                "code": 2,
+                "proof": 3,
+                "spec+code": 4,
             }
 
             insert_query = """
@@ -183,17 +186,19 @@ def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list)
             VALUES (%s, %s, %s, %s, %s, NOW())
             """
 
-            for chunk in parsed_chunks:
-                cursor.execute(
-                    insert_query,
-                    (
-                        package_id,
-                        code_language_id,
-                        type_map[chunk["type"]],
-                        chunk["content"],
-                        chunk["order"],
-                    ),
-                )
+            # Iterate through each type and its chunks
+            for chunk_type, chunks in result.items():
+                for chunk in chunks:
+                    cursor.execute(
+                        insert_query,
+                        (
+                            package_id,
+                            code_language_id,
+                            type_map[chunk_type],  # Use the type from the outer dict
+                            chunk["content"],
+                            chunk["order"],
+                        ),
+                    )
 
             conn.commit()
             logger.info(f"Created snippets for package {package_id}")
@@ -202,7 +207,6 @@ def create_snippets(package_id: int, code_language_id: int, parsed_chunks: list)
     except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return False
-
 
 def delete_package_and_cleanup(package_id: int):
     try:
@@ -272,7 +276,7 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
         return [
             {"content": chunk["content"], "order": chunk["order"]}
             for chunk in parsed_chunks
-            if chunk["type"] == typ
+            if chunk is not None and chunk.get("type") == typ
         ]
 
     return {typ: jsonify_content(typ) for typ in ["spec", "code", "proof", "spec+code"]}
@@ -328,8 +332,8 @@ def main():
                 package_id = create_package_entry(args.code_id, code_language_id)
                 if package_id:
                     logger.info(f"Successfully created package with ID {package_id}")
-                    # Create snippets entries
-                    if create_snippets(package_id, code_language_id, parsed_chunks):
+                    # Pass the result dictionary instead of parsed_chunks
+                    if create_snippets(package_id, code_language_id, result):
                         logger.info("Successfully created snippets")
                     else:
                         logger.error("Failed to create snippets")
