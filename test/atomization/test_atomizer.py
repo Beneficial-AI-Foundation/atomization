@@ -4,7 +4,6 @@ import os
 from atomization.atomizer import (
     DBConnection,
     get_code_entry,
-    get_code_language_id,
     create_package_entry,
     create_snippets,
     delete_package_and_cleanup,
@@ -139,7 +138,7 @@ def test_db_connection_error(mock_db_config):
     """Test database connection error handling."""
     with patch('mysql.connector.connect', side_effect=Exception("Connection failed")):
         with pytest.raises(Exception):
-            with DBConnection() as conn:
+            with DBConnection():
                 pass
 
 @pytest.mark.parametrize("code_id,expected", [
