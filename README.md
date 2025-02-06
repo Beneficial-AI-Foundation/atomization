@@ -18,7 +18,7 @@ To install python version and dependencies
 After installing dependencies, install the development packages:
 
 ```base
-uv pip install -e ".[dev]"
+uv sync
 ```
 
 ### Testing
