@@ -14,7 +14,7 @@ main = "atomization.atomizer:main"
 dry = "atomization.atomizer_dry:main"
 test = "pytest:main"  
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=8.3.4",
     "ruff>=0.9.1",
