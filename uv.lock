@@ -11,7 +11,7 @@ dependencies = [
     { name = "python-dotenv" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
@@ -21,13 +21,9 @@ dev = [
 requires-dist = [
     { name = "coqpyt", git = "https://github.com/sr-lab/coqpyt" },
     { name = "mysql-connector-python", specifier = ">=9.1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.4" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=8.3.4" },
-    { name = "ruff", specifier = ">=0.9.1" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.1" },
 ]
 
 [[package]]
