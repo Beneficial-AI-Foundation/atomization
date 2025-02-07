@@ -14,8 +14,8 @@ dependencies = [
 ]
 
 [project.scripts]
-main = "atomization.atomizer:main"
-dry = "atomization.atomizer_dry:main"
+atomize = "atomization.atomizer:main"
+dry = "atomization.atomizer:dry_run"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,13 +24,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/atomization"]
 
+[tool.uv]
+entrypoints = { atomize = "atomization.atomizer:main", dry = "atomization.atomizer:dry_run" }
+
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
-pantograph = { git = "https://github.com/lenianiva/PyPantograph", branch = "fixed/v4.16.0-rc1"}
+pantograph = { git = "https://github.com/lenianiva/PyPantograph", branch = "fixed/v4.16.0-rc1" }
 
 [dependency-groups]
-dev = [
-    "ipykernel>=6.29.5",
-    "pytest>=8.3.4",
-    "ruff>=0.9.1",
-]
+dev = ["ipykernel>=6.29.5", "pytest>=8.3.4", "ruff>=0.9.1"]

@@ -12,6 +12,11 @@ from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
 from atomization.lean.atomizer import atomize_lean
 from bidict import bidict
 
+from pathlib import Path
+from argparse import ArgumentParser
+from atomization.coq.atomizer import CoqAtomizer
+
+
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,9 +26,13 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 
 # This is a bidirectional map between language names and their IDs in the database because they're supposed to be unique.
-LANG_MAP: bidict[str, int] = bidict(
-    {"dafny": 1, "lean": 2, "coq": 3, "isabelle": 4, "metamath": 5}
-)
+LANG_MAP: bidict[str, int] = bidict({
+    "dafny": 1,
+    "lean": 2,
+    "coq": 3,
+    "isabelle": 4,
+    "metamath": 5,
+})
 
 
 class DBConnection:
@@ -51,7 +60,7 @@ class DBConnection:
             self.conn.close()
 
 
-def test_connection():
+def test_connection() -> bool:
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
@@ -261,13 +270,11 @@ def sort_dafny_chunks(result: dict) -> list[dict]:
 
     for chunk_type in ["code", "proof", "spec", "spec+code"]:
         for chunk in result.get(chunk_type, []):
-            all_chunks.append(
-                {
-                    "content": chunk["content"],
-                    "order": chunk["order"],
-                    "type": chunk_type,
-                }
-            )
+            all_chunks.append({
+                "content": chunk["content"],
+                "order": chunk["order"],
+                "type": chunk_type,
+            })
 
     # Sort by order
     return sorted(all_chunks, key=lambda x: x["order"])
@@ -284,7 +291,12 @@ def jsonify_vlib(parsed_chunks: list[dict]) -> dict:
     return {typ: jsonify_content(typ) for typ in ["spec", "code", "proof", "spec+code"]}
 
 
-def main():
+# New function to encapsulate CLI logic
+
+
+def run_atomizer(args: list[str] | None = None) -> int:
+    """Parse command line arguments and run the appropriate atomizer command.
+    Returns exit code."""
     parser = argparse.ArgumentParser(
         description="Atomize code from the database into snippets"
     )
@@ -301,57 +313,87 @@ def main():
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
     atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
 
-    if args.command == "test" or not args.command:
-        test_connection()
-    elif args.command == "delete":
-        print(f"Deleting package {args.package_id}")
-        if delete_package_and_cleanup(args.package_id):
-            logger.info(f"Successfully deleted package {args.package_id}")
-    elif args.command == "atomize":
+    if parsed_args.command == "test" or not parsed_args.command:
+        return 0 if test_connection() else 1
+    elif parsed_args.command == "delete":
+        print(f"Deleting package {parsed_args.package_id}")
+        if delete_package_and_cleanup(parsed_args.package_id):
+            logger.info(f"Successfully deleted package {parsed_args.package_id}")
+            return 0
+        else:
+            return 1
+    elif parsed_args.command == "atomize":
         try:
-            content, package_id = get_code_entry(args.code_id)
-
+            content, package_id = get_code_entry(parsed_args.code_id)
             if content is not None:
-                decoded_content = content.decode("utf-8")
-                code_language_id = get_code_language_id(args.code_id)
+                decoded_content: str = content.decode("utf-8")
+                # It is assumed that get_code_language_id returns an int; if None, this will error
+                code_language_id: int = get_code_language_id(parsed_args.code_id)
                 if code_language_id == LANG_MAP["dafny"]:
                     parsed_chunks = atomize_dafny(decoded_content)
-                    print(f"Atomizing Dafny code with ID {args.code_id}")
+                    print(f"Atomizing Dafny code with ID {parsed_args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 elif code_language_id == LANG_MAP["lean"]:
-                    parsed_chunks = atomize_lean(decoded_content, args.code_id)
-                    # code will sit in dummy project in `lean/` dir
-                    print(f"Atomizing Lean code with ID {args.code_id}")
+                    parsed_chunks = atomize_lean(decoded_content, parsed_args.code_id)
+                    print(f"Atomizing Lean code with ID {parsed_args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 elif code_language_id == LANG_MAP["coq"]:
                     parsed_chunks = atomize_coq(decoded_content)
-                    print(f"Atomizing Coq code with ID {args.code_id}")
+                    print(f"Atomizing Coq code with ID {parsed_args.code_id}")
                     result = jsonify_vlib(parsed_chunks)
                 else:
                     print("Language not supported yet")
-                    sys.exit(1)
+                    return 1
 
                 pprint(result)
 
-                # Create package entry
-                package_id = create_package_entry(args.code_id, code_language_id)
+                package_id = create_package_entry(parsed_args.code_id, code_language_id)
                 if package_id:
                     logger.info(f"Successfully created package with ID {package_id}")
-                    # Create snippets entries
                     if create_snippets(package_id, code_language_id, parsed_chunks):
                         logger.info("Successfully created snippets")
                     else:
                         logger.error("Failed to create snippets")
+                        return 1
                 else:
                     logger.error("Failed to create package entry")
+                    return 1
             else:
                 print(f"Package already exists: {package_id}")
+                return 1
 
+            return 0
         except ValueError as e:
             parser.error(
                 f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`"
             )
     else:
         parser.print_help()
+        return 1
+
+
+def main() -> None:
+    exit_code = run_atomizer()
+    sys.exit(exit_code)
+
+
+def dry_run() -> None:
+    """Dry run the atomizer on a given Coq file."""
+
+    def parser() -> ArgumentParser:
+        parser = ArgumentParser()
+        parser.add_argument("name", type=str)
+        return parser
+
+    coq_fixtures = Path("examples/coq")
+    args = parser().parse_args()
+    file = coq_fixtures / f"{args.name}.v"
+    atomizer = CoqAtomizer(file)
+    json_content = atomizer.jsonify_vlib()
+    print(json_content)
+
+
+if __name__ == "__main__":
+    main()
