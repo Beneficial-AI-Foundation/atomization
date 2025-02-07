@@ -4,21 +4,19 @@ version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "bidict>=0.23.1",
     "coqpyt",
     "mysql-connector-python>=9.1.0",
     "python-dotenv>=1.0.1",
 ]
 
 [project.scripts]
-main = "atomization.atomizer:main"
-dry = "atomization.atomizer_dry:main"
-test = "pytest:main"  
+atomize = "atomization.atomizer:main"
+dry = "atomization.atomizer:dry_run"
+test = "pytest:main"
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-    "ruff>=0.9.1",
-]
+dev = ["pytest>=8.3.4", "ruff>=0.9.1", "ipykernel>=6.29.5"]
 
 [build-system]
 requires = ["hatchling"]
@@ -27,12 +25,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/atomization"]
 
+
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
+
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
 python_files = ["test_*.py"]
-pythonpath = [
-    "src"
-]
+pythonpath = ["src"]
