@@ -7,6 +7,10 @@ venv/
 .direnv/
 .ipynb_checkpoints/
 *.vo
+*.vos
+*.vok
+*.glob
+logs/
 .lia.cache
 .nia.cache
 .env
