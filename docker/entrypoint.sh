@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-exec nix develop --command uv run main "$@"
+exec nix develop --command uv run atomize "$@"
