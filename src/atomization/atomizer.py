@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
 from bidict import bidict
-
+from atomization.lean.atomizer import atomize_lean
 from pathlib import Path
 from atomization.coq.atomizer import CoqAtomizer
 
@@ -352,7 +352,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             parsed_chunks = atomize_dafny(decoded_content)
             print(f"Atomizing Dafny code with ID {code_id}")
         elif code_language_id == LANG_MAP["lean"]:
-            raise NotImplementedError("Lean atomization not implemented yet")
+            parsed_chunks = atomize_lean(decoded_content, code_id)
         elif code_language_id == LANG_MAP["coq"]:
             parsed_chunks = atomize_coq(decoded_content)
             print(f"Atomizing Coq code with ID {code_id}")

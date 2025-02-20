@@ -1,0 +1,26 @@
+name = "atomization"
+version = "0.1.0"
+defaultTargets = ["atomization"]
+
+[[lean_lib]]
+name = "Atomization"
+
+[[lean_exe]]
+name = "atomization"
+root = "Main"
+
+# [[require]]
+# name = "importGraph"
+# git = "https://github.com/leanprover-community/import-graph.git"
+# rev = "eda37c9bda186b5ea28b4681b38f65fcf5dfe163"
+
+
+# [[require]]
+# name = "mathlib"
+# git = "https://github.com/leanprover-community/mathlib.git"
+# rev = "master"
+
+# [[require]]
+# name = "lean_extras"
+# git = "https://github.com/adamtopaz/lean_extras.git"
+# rev = "master"
