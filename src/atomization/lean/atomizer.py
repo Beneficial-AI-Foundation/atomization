@@ -480,6 +480,7 @@ def test_atomizer() -> None:
 
 class Schema(TypedDict):
     """The schema of an atomized definition."""
+
     identifier: str
     body: str
     type: CodeType
@@ -497,12 +498,14 @@ def atoms_to_schema(atoms: Collection[AtomizedDef]) -> list[Schema]:
             Schema(
                 identifier=dep,
                 # type: ignore
-                body=name_to_atom[dep].source_code if name_to_atom[dep].source_code is not None else "",
-                type="code" if name_to_atom[dep].kind == "def" else "proof", 
+                body=name_to_atom[dep].source_code
+                if name_to_atom[dep].source_code is not None
+                else "",
+                type="code" if name_to_atom[dep].kind == "def" else "proof",
                 language="lean",
-                deps=[] # TODO this should be recursive?
+                deps=[],  # TODO this should be recursive?
             )
-            for dep in atom.type_dependencies | atom.value_dependencies 
+            for dep in atom.type_dependencies | atom.value_dependencies
             if dep in name_to_atom
         ]
         out.append(
@@ -515,6 +518,7 @@ def atoms_to_schema(atoms: Collection[AtomizedDef]) -> list[Schema]:
             )
         )
     return out
+
 
 def sort_atoms(atoms: list[AtomizedDef]) -> list[AtomizedDef]:
     """
@@ -592,9 +596,9 @@ def set_toolchain(
 
 def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     """Create a dummy Lean project in `/tmp/Pkg{pkg_id}`.
-    
+
     `code`: all the code in one big file.
-    
+
     TODO: this should be a function that takes in a `dict[Path (relative to project root), str (code)]` and creates a project with them.
     """
     project_name = f"Pkg{pkg_id}"
