@@ -22,6 +22,7 @@ jobs:
       - name: Build Lean project
         run: |
           cd examples/lean
+          elan toolchain install leanprover/lean4:v4.16.0-rc1
           lake build
           
       # Python setup and tests after Lean is built
