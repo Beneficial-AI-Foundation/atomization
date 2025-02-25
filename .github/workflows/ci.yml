@@ -1,4 +1,4 @@
-name: UV Checks and Tests
+name: CI with Python and Lean
 on:
   push:
     branches:
@@ -27,3 +27,21 @@ jobs:
       - name: Run tests
         run: |
           uv run test
+
+  lean-checks:
+    name: Lean build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Lean
+        uses: leanprover/lean-action@v1
+        with:
+          # Automatically configure based on the Lake workspace
+          auto-config: true
+          # Enable building, testing, and linting
+          build: true
+          test: true
+          lint: true
+          # Enable GitHub caching for faster CI runs
+          use-github-cache: true

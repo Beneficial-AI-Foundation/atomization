@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from graphlib import TopologicalSorter
 import logging
 
-import pantograph
 import tqdm
 import dataclasses_json
 from pantograph.server import Server
