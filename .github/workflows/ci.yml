@@ -22,8 +22,6 @@ jobs:
       - name: Build Lean project
         run: |
           cd examples/lean
-          # Use elan to install the right toolchain as specified in the lean-toolchain file
-          elan toolchain install
           lake build
           
       # Python setup and tests after Lean is built
