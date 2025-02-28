@@ -1,4 +1,4 @@
-name: UV Checks and Tests
+name: CI with Python and Lean
 on:
   push:
     branches:
@@ -7,12 +7,25 @@ on:
     branches:
       - main
 jobs:
-  python-checks-tests:
-    name: Python lint and test
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
+      # Lean setup and build first
+      - name: Install elan (Lean version manager)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Build Lean project
+        run: |
+          cd examples/lean
+          elan toolchain install leanprover/lean4:v4.16.0-rc1
+          lake build
+          
+      # Python setup and tests after Lean is built
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Install Nix
