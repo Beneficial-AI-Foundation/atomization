@@ -12,6 +12,7 @@ from bidict import bidict
 from atomization.lean.atomizer import atomize_lean
 from pathlib import Path
 from atomization.coq.atomizer import CoqAtomizer
+from atomization.isabelle.atomizer import atomize_isa
 
 
 load_dotenv()
@@ -356,6 +357,8 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         elif code_language_id == LANG_MAP["coq"]:
             parsed_chunks = atomize_coq(decoded_content)
             print(f"Atomizing Coq code with ID {code_id}")
+        elif code_language_id == LANG_MAP["isabelle"]:
+            parsed_chunks = atomize_isa(decoded_content, code_id)
         else:
             print("Language not supported yet")
             return 1
