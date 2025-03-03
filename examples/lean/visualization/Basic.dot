@@ -1,0 +1,38 @@
+digraph G {
+    rankdir=BT;
+    node [fontname="Arial", fontsize=10];
+    
+    node_0 [label="Atom_g", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_g := 1"];
+    node_1 [label="Atom_f", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_f := 2"];
+    node_2 [label="Atom_fg", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_fg := Atom_g + Atom_g"];
+    node_3 [label="Atom_f'", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_f' : 2 = 2 := rfl"];
+    node_4 [label="Atom_f''", shape="ellipse", fillcolor="#2196F3", style="filled", tooltip="theorem Atom_f'' : 2 = 2 := by rfl"];
+    node_5 [label="Atom_f'''", shape="ellipse", fillcolor="#2196F3", style="filled", tooltip="theorem Atom_f''' : 2 = 2 := by omega"];
+    node_6 [label="Atom_fib", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_fib : Nat → Nat := fun n =>\n  match n with\n  | 0 => 0\n  | 1 => 1\n  | n + 2 => Atom_fib (n + 1) + Atom_fib n"];
+    node_7 [label="Atom_fibImperative", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_fibImperative (n: Nat) : Nat := Id.run do\n  let mut a : Nat := 0\n  let mut b : Nat := 1\n  for _ in [0:n] do\n    let c := a + b\n    a := b\n    b := c\n  return b"];
+    node_8 [label="Atom_fib_spec", shape="ellipse", fillcolor="#2196F3", style="filled", tooltip="@[csimp]\ntheorem Atom_fib_spec : @Atom_fib = @Atom_fibImperative := by\n  sorry"];
+    node_9 [label="Atom_trivial", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_trivial : Nat := 1"];
+    node_10 [label="Atom_trivial_", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_trivial_ : Nat := 1 + 1 - 1"];
+    node_11 [label="Atom_trivial_eq", shape="ellipse", fillcolor="#2196F3", style="filled", tooltip="theorem Atom_trivial_eq : Atom_trivial = Atom_trivial_ := by rfl"];
+    node_12 [label="Atom_even", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_even : Nat → Bool\n  | 0 => true\n  | n + 1 => Atom_odd n"];
+    node_13 [label="Atom_odd", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_odd : Nat → Bool\n  | 0 => false\n  | n + 1 => Atom_even n"];
+    node_14 [label="Atom_sumUpTo", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_sumUpTo (n : Nat) : Nat := match n with\n  | 0 => 0\n  | n+1 => n + 1 + Atom_sumUpTo n"];
+    node_15 [label="Atom_fastSumUpTo", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def Atom_fastSumUpTo (n : Nat) : Nat := n * (n + 1) / 2"];
+    node_16 [label="Atom_split_sum", shape="ellipse", fillcolor="#2196F3", style="filled", tooltip="theorem Atom_split_sum (n : Nat) : Atom_sumUpTo (n + 1) = n + 1 + Atom_sumUpTo n := by simp [Atom_sumUpTo]"];
+    node_17 [label="Atom_Test.f", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def f := 1"];
+    node_18 [label="Atom_Test.g", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def g := 2"];
+    node_19 [label="Atom_Test.h", shape="box", fillcolor="#4CAF50", style="filled", tooltip="def h := f + g"];
+    
+    node_2 -> node_0;
+    node_6 -> node_6;
+    node_8 -> node_6;
+    node_8 -> node_7;
+    node_11 -> node_9;
+    node_11 -> node_10;
+    node_12 -> node_13;
+    node_13 -> node_12;
+    node_14 -> node_14;
+    node_16 -> node_14;
+    node_19 -> node_17;
+    node_19 -> node_18;
+} 

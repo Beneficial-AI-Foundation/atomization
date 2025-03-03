@@ -12,6 +12,7 @@ from bidict import bidict
 from atomization.lean.atomizer import atomize_lean
 from pathlib import Path
 from atomization.coq.atomizer import CoqAtomizer
+from atomization.lean.visualizer import visualize_lean_file
 
 
 load_dotenv()
@@ -23,15 +24,13 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 
 # This is a bidirectional map between language names and their IDs in the database because they're supposed to be unique.
-LANG_MAP: bidict[str, int] = bidict(
-    {
-        "dafny": 1,
-        "lean": 2,
-        "coq": 3,
-        "isabelle": 4,
-        "metamath": 5,
-    }
-)
+LANG_MAP: bidict[str, int] = bidict({
+    "dafny": 1,
+    "lean": 2,
+    "coq": 3,
+    "isabelle": 4,
+    "metamath": 5,
+})
 
 
 class DBConnection:
@@ -269,13 +268,11 @@ def sort_dafny_chunks(result: dict) -> list[dict]:
 
     for chunk_type in ["code", "proof", "spec", "spec+code"]:
         for chunk in result.get(chunk_type, []):
-            all_chunks.append(
-                {
-                    "content": chunk["content"],
-                    "order": chunk["order"],
-                    "type": chunk_type,
-                }
-            )
+            all_chunks.append({
+                "content": chunk["content"],
+                "order": chunk["order"],
+                "type": chunk_type,
+            })
 
     # Sort by order
     return sorted(all_chunks, key=lambda x: x["order"])
@@ -311,6 +308,18 @@ def parse_cli_arguments(
     # Atomize command
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
     atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
+
+    # Visualize command
+    visualize_parser = subparsers.add_parser(
+        "visualize", help="Visualize Lean code and generate dependency graphs"
+    )
+    visualize_parser.add_argument("file_path", type=str, help="Path to Lean file")
+    visualize_parser.add_argument(
+        "--output-dir",
+        type=str,
+        help="Output directory for visualization files",
+        default=None,
+    )
 
     return parser.parse_args(args), parser
 
@@ -385,6 +394,35 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         )
 
 
+def execute_visualize_command(file_path: str, output_dir: str | None = None) -> int:
+    """
+    Execute the visualize command:
+     - Takes a Lean file and generates visualization files (JSON, DOT, SVG, PNG)
+     - Handle CLI I/O (printing and error reporting)
+    """
+    try:
+        file_path = Path(file_path)
+        output_dir = Path(output_dir) if output_dir else None
+
+        if not file_path.exists():
+            print(f"Error: File not found - {file_path}")
+            return 1
+
+        if file_path.suffix != ".lean":
+            print(
+                f"Error: Not a Lean file - {file_path}. Only Lean files are supported."
+            )
+            return 1
+
+        print(f"Visualizing Lean file: {file_path}")
+        visualize_lean_file(file_path, output_dir)
+        return 0
+
+    except Exception as e:
+        print(f"Error visualizing file: {e}")
+        return 1
+
+
 def run_atomizer(args: list[str] | None = None) -> int:
     """Parse CLI arguments and dispatch to the appropriate command handler; returns exit code."""
     parsed_args, parser = parse_cli_arguments(args)
@@ -395,6 +433,8 @@ def run_atomizer(args: list[str] | None = None) -> int:
         return execute_delete_command(parsed_args.package_id)
     elif parsed_args.command == "atomize":
         return execute_atomize_command(parsed_args.code_id, parser)
+    elif parsed_args.command == "visualize":
+        return execute_visualize_command(parsed_args.file_path, parsed_args.output_dir)
     else:
         parser.print_help()
         return 1
