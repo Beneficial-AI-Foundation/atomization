@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-atomize = "atomization.atomizer:main"
+atomize = "atomization.atomizer:run_atomizer"
 dry = "atomization.atomizer:dry_run"
 test = "pytest:main"
 
