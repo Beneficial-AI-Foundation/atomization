@@ -604,21 +604,27 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     project_root = Path(f"/tmp/{project_name}")
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
-    # `math` is to add a mathlib dependency conveniently.
-    result = subprocess.run(
-        # ["lake", "new", project_name, "math"],
+    
+    # First check if the directory already exists, and if not, create it
+    if not project_root.exists():
+        # `math` is to add a mathlib dependency conveniently.
         # TODO: add back mathlib dependency
-        ["lake", "new", project_name],
-        cwd="/tmp",
-        capture_output=True,
-        text=True,
-    )
+        result = subprocess.run(
+            ["lake", "new", project_name],
+            cwd="/tmp",
+            capture_output=True,
+            text=True,
+        )
+        
+        if result.returncode != 0:
+            # If the lake command failed, raise an error with the output
+            raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
+            
+        print(f"Created Lean project at {project_root}")
+        print("Command output:", result.stdout)
+    else:
+        print(f"Using existing Lean project at {project_root}")
 
-    with root_file.open("w") as f:
-        f.write(code)
-    # write a simple main file that removes the default `def hello := "world"` referenced from `root_file` since it's overwritten by `root_file.open`.
-    with main_file.open("w") as f:
-        f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
     set_toolchain(project_root)
 
     print(f"Created Lean project at {project_root}")
