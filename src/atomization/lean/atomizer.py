@@ -628,8 +628,6 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
 
     set_toolchain(project_root)
 
-    print(f"Created Lean project at {project_root}")
-    print("Command output:", result.stdout)
 
 
 def build_lean_project(project_root: Path) -> None:
