@@ -368,7 +368,8 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         else:
             print("Language not supported yet")
             return 1
-
+        if parsed_chunks:
+            print(f"Parsed chunks: {parsed_chunks}")
         # Business Logic: Format and display the atomized result
         result = jsonify_vlib(parsed_chunks)
         pprint(result)
