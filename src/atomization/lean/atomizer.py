@@ -625,7 +625,11 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
         print("Command output:", result.stdout)
     else:
         print(f"Using existing Lean project at {project_root}")
-
+    with root_file.open("w") as f:
+        f.write(code)
+    # write a simple main file that removes the default `def hello := "world"` referenced from `root_file` since it's overwritten by `root_file.open`.
+    with main_file.open("w") as f:
+        f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
     set_toolchain(project_root)
 
 
