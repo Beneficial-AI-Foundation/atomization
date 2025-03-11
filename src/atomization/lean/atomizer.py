@@ -647,8 +647,10 @@ def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
 
     all_atoms = atomize_project(server)
     sorted_atoms = sort_atoms(all_atoms)
+    print(f"Sorted atoms: {sorted_atoms}")
 
     schema = atoms_to_schema(sorted_atoms)
+    print(f"Schema: {schema}")
 
     return schema
 
