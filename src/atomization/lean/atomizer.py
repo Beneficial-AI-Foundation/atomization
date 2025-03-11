@@ -222,7 +222,7 @@ def atomize_project(
         if (
             sym_parts[0] not in all_excluded_namespaces
             and sym_parts[-1] not in EXCLUDED_SUFFIXES
-            and sym.startswith("Atom_")  # TODO rm, for debugging
+            # and sym.startswith("Atom_")  # TODO rm, for debugging
         ):
             filtered_symbols.append(sym)
         # filtered_symbols = [
