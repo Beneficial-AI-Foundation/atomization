@@ -212,6 +212,7 @@ def atomize_project(
     all_excluded_namespaces = excluded_namespaces | common_namespaces
     # First pass: Get all definitions and their basic info. Drop the first character of each symbol, which signifies its type (def/theorem/etc)
     catalog = [sym[1:] for sym in server.run("env.catalog", {})["symbols"]]
+    print(f"Catalog length: {catalog}")
     if verbose:
         print(f"Catalog length: {len(catalog)}")
     # Filter out builtins in FAST way (just check if the first part of the symbol is in EXCLUDED_NAMESPACES)
@@ -221,7 +222,7 @@ def atomize_project(
         if (
             sym_parts[0] not in all_excluded_namespaces
             and sym_parts[-1] not in EXCLUDED_SUFFIXES
-            and sym.startswith("Atom_")  # TODO rm, for debugging
+            # and sym.startswith("Atom_")  # TODO rm, for debugging
         ):
             filtered_symbols.append(sym)
         # filtered_symbols = [
