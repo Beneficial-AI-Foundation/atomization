@@ -151,7 +151,6 @@ def extract_kind(
 
     try:
         type = server.expr_type(type_info)
-        print(f"{type = }")
     except Exception as e:  # TODO refine exception type
         error_str = str(e)
         # Error: unknown universe level '`u'. The [1:] is to drop the backtick.
@@ -161,7 +160,6 @@ def extract_kind(
             type = server.run(
                 "expr.echo", {"expr": type_info, "levels": [universe_level]}
             )["type"]
-            print(f"{type = }")
         except Exception as e:
             print(f"Error 2: {e}")
             raise e
@@ -212,7 +210,7 @@ def atomize_project(
     all_excluded_namespaces = excluded_namespaces | common_namespaces
     # First pass: Get all definitions and their basic info. Drop the first character of each symbol, which signifies its type (def/theorem/etc)
     catalog = [sym[1:] for sym in server.run("env.catalog", {})["symbols"]]
-    print(f"Catalog length: {catalog}")
+    print(f"Catalog length: {len(catalog)}")
     if verbose:
         print(f"Catalog length: {len(catalog)}")
     # Filter out builtins in FAST way (just check if the first part of the symbol is in EXCLUDED_NAMESPACES)

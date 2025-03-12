@@ -464,19 +464,21 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         result = jsonify_vlib(parsed_chunks)
         pprint(result)
 
-        # DB Operation: Create package and snippet records
-        new_pkg_id = create_package_entry(code_id, code_language_id)
-        if new_pkg_id:
-            logger.info(f"Successfully created package with ID {new_pkg_id}")
-            if create_snippets(new_pkg_id, code_language_id, parsed_chunks):
-                logger.info("Successfully created snippets")
+        if code_language_id == LANG_MAP["dafny"]:
+            # DB Operation: Create package and snippet records
+            new_pkg_id = create_package_entry(code_id, code_language_id)
+            if new_pkg_id:
+                logger.info(f"Successfully created package with ID {new_pkg_id}")
+                if create_snippets(new_pkg_id, code_language_id, parsed_chunks):
+                    logger.info("Successfully created snippets")
+                else:
+                    logger.error("Failed to create snippets")
+                    return 1
             else:
-                logger.error("Failed to create snippets")
+                logger.error("Failed to create package entry")
                 return 1
         else:
-            logger.error("Failed to create package entry")
-            return 1
-
+            print("Skipping package and snippet creation for non-Dafny code until atomization stage 2 renders in the code/spec/proof style")
         return 0
 
     except ValueError as e:
