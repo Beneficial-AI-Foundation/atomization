@@ -369,9 +369,11 @@ def save_lean_atoms_to_db(parsed_chunks, code_id):
                     return atom_id_map[atom['identifier']]
                 
                 # Insert the atom into the atoms table
+                # Convert the body to bytes if it's not already
+                body_blob = atom['body'].encode('utf-8') if isinstance(atom['body'], str) else atom['body']
                 cursor.execute(
                     "INSERT INTO atoms (text, identifier, statement_type, code_id) VALUES (%s, %s, %s, %s)",
-                    (atom['body'], atom['identifier'], atom['type'], code_id)
+                    (body_blob, atom['identifier'], atom['type'], code_id)
                 )
                 atom_id = cursor.lastrowid
                 atom_id_map[atom['identifier']] = atom_id
