@@ -338,6 +338,70 @@ def execute_delete_command(package_id: int) -> int:
     return 1
 
 
+def save_lean_atoms_to_db(parsed_chunks, code_id):
+    """
+    Save atomized Lean code chunks to the database (atoms and atomsdependencies tables).
+    
+    Args:
+        parsed_chunks: List of Schema objects representing atomized Lean code
+        code_id: Code ID from the codes table
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Dictionary to track atom ids by identifier
+            atom_id_map = {}
+            
+            # Function to recursively process atoms and their dependencies
+            def process_atom(atom, parent_id=None):
+                # Skip if we've already processed this atom
+                if atom['identifier'] in atom_id_map:
+                    # If we have a parent, add the dependency relationship
+                    if parent_id is not None:
+                        cursor.execute(
+                            "INSERT INTO atomsdependencies (parentatom_id, childatom_id) VALUES (%s, %s)",
+                            (parent_id, atom_id_map[atom['identifier']])
+                        )
+                    return atom_id_map[atom['identifier']]
+                
+                # Insert the atom into the atoms table
+                cursor.execute(
+                    "INSERT INTO atoms (text, identifier, statement_type, code_id) VALUES (%s, %s, %s, %s)",
+                    (atom['body'], atom['identifier'], atom['type'], code_id)
+                )
+                atom_id = cursor.lastrowid
+                atom_id_map[atom['identifier']] = atom_id
+                
+                # If there's a parent, add the dependency relationship
+                if parent_id is not None:
+                    cursor.execute(
+                        "INSERT INTO atomsdependencies (parentatom_id, childatom_id) VALUES (%s, %s)",
+                        (parent_id, atom_id)
+                    )
+                
+                # Process dependencies recursively
+                for dep in atom.get('deps', []):
+                    process_atom(dep, atom_id)
+                
+                return atom_id
+            
+            # Process all top-level atoms
+            for atom in parsed_chunks:
+                process_atom(atom)
+            
+            conn.commit()
+            logger.info(f"Successfully saved {len(atom_id_map)} atoms to database")
+            return True
+            
+    except MysqlConnectorError as e:
+        logger.error(f"Database error while saving atoms: {e}")
+        return False
+
+
 def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> int:
     """
     Execute the atomize command:
@@ -361,15 +425,39 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             parsed_chunks = atomize_dafny(decoded_content)
             print(f"Atomizing Dafny code with ID {code_id}")
         elif code_language_id == LANG_MAP["lean"]:
+            # For Lean, we need a different approach
+            print(f"Atomizing Lean code with ID {code_id}")
             parsed_chunks = atomize_lean(decoded_content, code_id)
+            
+            # Save Lean atoms to database (atoms and atomsdependencies tables)
+            if parsed_chunks:
+                if save_lean_atoms_to_db(parsed_chunks, code_id):
+                    logger.info(f"Successfully saved Lean atoms for code {code_id}")
+                else:
+                    logger.error(f"Failed to save Lean atoms for code {code_id}")
+                    return 1
+            
+            # Convert Lean atoms to snippets format for consistency with other languages
+            # Note: This is a simplified conversion for display and snippet creation
+            snippet_chunks = []
+            for atom in parsed_chunks:
+                snippet_chunks.append({
+                    "content": atom["body"],
+                    "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                    "type": atom["type"]
+                })
+            parsed_chunks = snippet_chunks
+            
         elif code_language_id == LANG_MAP["coq"]:
             parsed_chunks = atomize_coq(decoded_content)
             print(f"Atomizing Coq code with ID {code_id}")
         else:
             print("Language not supported yet")
             return 1
+            
         if parsed_chunks:
             print(f"Parsed chunks: {parsed_chunks}")
+            
         # Business Logic: Format and display the atomized result
         result = jsonify_vlib(parsed_chunks)
         pprint(result)
