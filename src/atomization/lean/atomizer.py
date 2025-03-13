@@ -2,8 +2,6 @@
 # %%
 import json
 from pathlib import Path
-from pprint import pprint
-import random
 import subprocess
 from typing import Collection, TypedDict
 from typing import Literal
@@ -368,62 +366,6 @@ def de_atomize(
     return out
 
 
-def test_atomizer() -> None:
-    """Test the atomizer functionality using example definitions
-    The code in question is in `{_PROJECT_ROOT}/examples/lean/Atomization/Basic.lean`:
-
-    ```lean
-    def Atom_g := 1
-
-    def Atom_f := 2
-    def Atom_fg := Atom_g + Atom_g
-    def Atom_f' : 2 = 2 := rfl
-
-    theorem Atom_f'' : 2 = 2 := by rfl
-
-    def Atom_fib : Nat → Nat := fun n =>
-    match n with
-    | 0 => 0
-    | 1 => 1
-    | n + 2 => Atom_fib (n + 1) + Atom_fib n
-
-    def Atom_fibImperative (n: Nat) : Nat := Id.run do
-    let mut a : Nat := 0
-    let mut b : Nat := 1
-    for _ in [0:n] do
-    let c := a + b
-    a := b
-    b := c
-    return b
-
-    @[csimp]
-    theorem Atom_fib_spec : @Atom_fib = @Atom_fibImperative := by
-    sorry
-
-    ```
-    """
-
-    # We create a dummy project as an integration test.
-    test_code = (_PROJECT_ROOT / "examples/lean/Atomization/Basic.lean").read_text()
-
-    pkg_id = random.randint(1000, 9999)
-    project_name = f"Pkg{pkg_id}"
-    project_path = Path(f"/tmp/{project_name}")
-    print(f"Creating dummy Lean project at {project_path}")
-    create_dummy_lean_project(test_code, pkg_id)
-    # pantograph needs the Lean project to be built.
-    build_lean_project(project_path)
-
-    server = Server(imports=["Init", project_name], project_path=project_path)
-    # Test atomization
-    all_atoms = atomize_project(server, verbose=True)
-
-    sorted_atoms = sort_atoms(all_atoms)
-    # see if sorting affected order of atoms
-    orig_names = [x.name for x in all_atoms]
-    sort_names = [x.name for x in sorted_atoms]
-
-
 class Schema(TypedDict):
     """The schema of an atomized definition."""
 
@@ -600,6 +542,3 @@ def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     schema = atoms_to_schema(sorted_atoms)
 
     return schema
-
-if __name__ == "__main__":
-    test_atomizer()

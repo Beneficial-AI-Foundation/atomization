@@ -2,23 +2,12 @@
 
 import os
 import sys
-import json
 from pathlib import Path
 import subprocess
 
 # Add the parent directory to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from src.atomization.lean.visualizer import (
-    visualize_lean_file,
-    atoms_to_dot,
-    atoms_to_json,
-)
-from src.atomization.lean.atomizer import (
-    atomize_project,
-    create_dummy_lean_project,
-    build_lean_project,
-)
 
 
 def run_visualization_example():
@@ -57,7 +46,7 @@ def run_visualization_example():
     # Step 3: Convert DOT to SVG using graphviz
     print("\n3. Converting DOT to SVG...")
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["dot", "-Tsvg", str(dot_output), "-o", str(svg_output)],
             capture_output=True,
             text=True,
@@ -74,7 +63,7 @@ def run_visualization_example():
         print("Using manually created SVG file as fallback.")
 
     print("\nVisualization process completed!")
-    print(f"Created files:")
+    print("Created files:")
     print(f"- JSON: {json_output}")
     print(f"- DOT: {dot_output}")
     print(f"- SVG: {svg_output}")

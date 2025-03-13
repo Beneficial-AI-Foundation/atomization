@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Union
 
 from pantograph.server import Server
 
 from atomization.lean.atomizer import (
     AtomizedDef,
-    atomize_lean,
     atomize_project,
     build_lean_project,
     create_dummy_lean_project,
-    dataclasses_json,
     set_toolchain,
 )
 
