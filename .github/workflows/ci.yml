@@ -28,11 +28,11 @@ jobs:
         run: |
           mkdir -p ~/isabelle
           cd ~/isabelle
-          wget https://isabelle.in.tum.de/dist/Isabelle2023_linux.tar.gz
-          tar -xzf Isabelle2023_linux.tar.gz
-          echo "$(cd ~/isabelle/Isabelle2023 && pwd)/bin" >> $GITHUB_PATH
-          ~/isabelle/Isabelle2023/bin/isabelle version
-          
+          wget https://isabelle.in.tum.de/dist/Isabelle2025_linux.tar.gz
+          tar -xzf Isabelle2025_linux.tar.gz
+          echo "$(cd ~/isabelle/Isabelle2025 && pwd)/bin" >> $GITHUB_PATH
+          ~/isabelle/Isabelle2025/bin/isabelle version
+
       # Python setup and tests after Lean is built
       - name: Install uv
         uses: astral-sh/setup-uv@v5
