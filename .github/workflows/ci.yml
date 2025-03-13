@@ -42,10 +42,10 @@ jobs:
         uses: DeterminateSystems/flakehub-cache-action@main
       - name: Install packages
         run: |
-          nix develop --experimental-features 'nix-command flakes'
+          nix develop
           uv sync
       - name: Check lint
         run: uv run ruff check .
       - name: Run tests
         run: |
-          uv run test
+          nix develop --command bash -c "uv run test"
