@@ -21,6 +21,7 @@
           pkgs.nodejs_23
           pkgs.jq
           pkgs.graphviz
+          pkgs.isabelle
         ];
       name = "atomization";
       shellHook = "echo ${name}";
