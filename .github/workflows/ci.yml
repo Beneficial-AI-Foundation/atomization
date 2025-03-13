@@ -24,6 +24,14 @@ jobs:
           cd examples/lean
           elan toolchain install leanprover/lean4:v4.16.0-rc1
           lake build
+      - name: Install Isabelle
+        run: |
+          mkdir -p ~/isabelle
+          cd ~/isabelle
+          wget https://isabelle.in.tum.de/dist/Isabelle2023_linux.tar.gz
+          tar -xzf Isabelle2023_linux.tar.gz
+          echo "$(cd ~/isabelle/Isabelle2023 && pwd)/bin" >> $GITHUB_PATH
+          ~/isabelle/Isabelle2023/bin/isabelle version
           
       # Python setup and tests after Lean is built
       - name: Install uv
