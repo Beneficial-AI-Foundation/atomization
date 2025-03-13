@@ -32,9 +32,9 @@ packages = ["src/atomization"]
 
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
-pantograph = { git = "https://github.com/lenianiva/PyPantograph" }
+pantograph = { git = "https://github.com/lenianiva/PyPantograph", branch = "fixed/v4.16.0-rc1" }
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-python_files = ["test_*.py"]
+python_files = ["*_test.py", "test_*.py"]
 pythonpath = ["src"]

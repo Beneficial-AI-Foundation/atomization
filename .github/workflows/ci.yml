@@ -24,7 +24,7 @@ jobs:
           cd examples/lean
           elan toolchain install leanprover/lean4:v4.16.0-rc1
           lake build
-          
+
       # Python setup and tests after Lean is built
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -34,9 +34,10 @@ jobs:
         uses: DeterminateSystems/flakehub-cache-action@main
       - name: Install packages
         run: |
+          nix develop
           uv sync
       - name: Check lint
         run: uv run ruff check .
       - name: Run tests
         run: |
-          uv run test
+          nix develop --command bash -c "uv run test"
