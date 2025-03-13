@@ -218,16 +218,21 @@ def visualize_lean_file(
 
     # Create a temporary Lean project
     pkg_id = hash(str(file_path)) % 1000000
+    project_name = f"Pkg{pkg_id}"  # Match the project name used in create_dummy_lean_project
     create_dummy_lean_project(file_path.read_text(), pkg_id)
 
     try:
         # Set toolchain and build the project
-        project_root = Path(f"/tmp/lean_pkg_{pkg_id}")
+        project_root = Path(f"/tmp/{project_name}")  # Match the path pattern in create_dummy_lean_project
         set_toolchain(project_root)
         build_lean_project(project_root)
 
         # Start a Pantograph server to interact with the Lean project
-        server = Server(project_root)
+        # Correctly initialize the Server with imports and project_path
+        server = Server(
+            imports=["Init", project_name],  # List of imports
+            project_path=str(project_root)   # Project path as a string
+        )
 
         # Atomize the project
         atoms = atomize_project(server)
@@ -243,9 +248,8 @@ def visualize_lean_file(
 
     finally:
         # Clean up the temporary project
-        if (project_root := Path(f"/tmp/lean_pkg_{pkg_id}")).exists():
+        if (project_root := Path(f"/tmp/{project_name}")).exists():
             import shutil
-
             shutil.rmtree(project_root)
 
 

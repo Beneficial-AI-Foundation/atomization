@@ -220,18 +220,8 @@ def atomize_project(
         if (
             sym_parts[0] not in all_excluded_namespaces
             and sym_parts[-1] not in EXCLUDED_SUFFIXES
-            # and sym.startswith("Atom_")  # TODO rm, for debugging
         ):
             filtered_symbols.append(sym)
-        # filtered_symbols = [
-    #     sym for sym in catalog if sym.split(".")[0] not in all_excluded_namespaces
-    # ]
-    # Filter even *faster* for debugging purposes by excluding all symbols except those starting with "Atom_".
-    # short_filtered_symbols = [
-    #     sym for sym in filtered_symbols if sym.startswith("Atom_")
-    # ]
-    # print(f"short filtered symbols: {short_filtered_symbols}")
-    # print(f"TestType type: {server.expr_type('Atom_TestType')}")
     print(f"Filtered symbols length: {len(filtered_symbols)}")
 
     # Dump filtered symbols to JSON for inspection/debugging
@@ -429,51 +419,9 @@ def test_atomizer() -> None:
     all_atoms = atomize_project(server, verbose=True)
 
     sorted_atoms = sort_atoms(all_atoms)
-    pprint(f"{sorted_atoms = }")
     # see if sorting affected order of atoms
     orig_names = [x.name for x in all_atoms]
     sort_names = [x.name for x in sorted_atoms]
-
-    print(f"Original names: {orig_names}")
-    print(f"Sorted names: {sort_names}")
-
-    # Test g definition
-    # g_def = find_def("Atom_g", all_atoms)
-    # print(g_def)
-
-    # assert g_def.source_code == "def Atom_g := 1", (
-    #     f"Expected source code to be 'def Atom_g := 1', got {g_def.source_code}"
-    # )
-    # assert g_def.type == "Nat", f"Expected type to be 'Nat', got {g_def.type}"
-    # assert g_def.kind == "def", f"Expected kind to be 'def', got {g_def.kind}"
-
-    # # Test fg definition and its dependencies
-    # fg_def = find_def("Atom_fg", all_atoms)
-
-    # assert fg_def.source_code == "def Atom_fg := Atom_g + Atom_g", (
-    #     f"Expected source code to be 'def Atom_fg := Atom_g + Atom_g', got {fg_def.source_code}"
-    # )
-    # assert "Atom_g" in fg_def.value_dependencies, (
-    #     f"Expected value dependencies to include 'Atom_g', got {fg_def.value_dependencies}"
-    # )
-    # assert fg_def.kind == "def", f"Expected kind to be 'def', got {fg_def.kind}"
-
-    # # Test theorem f''
-    # f2_def = find_def("Atom_f''", all_atoms)
-
-    # assert f2_def.type == "2 = 2", f"Expected type to be '2 = 2', got {f2_def.type}"
-    # assert f2_def.kind == "theorem", f"Expected kind to be 'theorem', got {f2_def.kind}"
-
-    # fib_def = find_def("Atom_fib", all_atoms)
-
-    # assert (
-    #     fib_def.source_code
-    #     == "def Atom_fib : Nat → Nat := fun n =>\nmatch n with\n| 0 => 0\n| 1 => 1\n| n + 2 => Atom_fib (n + 1) + Atom_fib n"
-    # ), (
-    #     f"Expected source code to be 'def Atom_fib : Nat → Nat := fun n =>\nmatch n with\n| 0 => 0\n| 1 => 1\n| n + 2 => Atom_fib (n + 1) + Atom_fib n', got {fib_def.source_code}"
-    # )
-
-    print("All tests passed!")
 
 
 class Schema(TypedDict):
@@ -588,6 +536,8 @@ def set_toolchain(
     project_root: Path, version: str = "leanprover/lean4:v4.16.0-rc1"
 ) -> None:
     """Set the toolchain for a Lean project."""
+    project_root.mkdir(parents=True, exist_ok=True)
+
     with (project_root / "lean-toolchain").open("w") as f:
         f.write(version)
 
@@ -630,13 +580,10 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
         f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
     set_toolchain(project_root)
 
-
-
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
     set_toolchain(project_root)
     subprocess.run(["lake", "build"], cwd=project_root)
-
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
@@ -649,15 +596,10 @@ def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
 
     all_atoms = atomize_project(server)
     sorted_atoms = sort_atoms(all_atoms)
-    print(f"Sorted atoms: {sorted_atoms}")
 
     schema = atoms_to_schema(sorted_atoms)
-    print(f"Schema: {schema}")
 
     return schema
 
-
 if __name__ == "__main__":
     test_atomizer()
-
-# %%

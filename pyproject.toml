@@ -36,5 +36,5 @@ pantograph = { git = "https://github.com/lenianiva/PyPantograph", branch = "fixe
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-python_files = ["test_*.py"]
+python_files = ["*_test.py", "test_*.py"]
 pythonpath = ["src"]
