@@ -20,6 +20,7 @@
         ++ [
           pkgs.nodejs_23
           pkgs.jq
+          pkgs.isabelle
         ];
       name = "atomization";
       shellHook = "echo ${name}";
