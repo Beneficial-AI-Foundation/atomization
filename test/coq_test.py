@@ -9,7 +9,6 @@ COQ_FIXTURES = EXAMPLES / "coq"
 @pytest.mark.parametrize("name", ["minimal", "trivial", "days", "sumupto"])
 def test_coq_file_structure(name):
     the_file = COQ_FIXTURES / f"{name}.v"
-    print(f"Testing {the_file}")
     atomizer = CoqAtomizer(the_file)
     jsn = atomizer.jsonify_vlib()
     for item in jsn:
