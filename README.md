@@ -71,24 +71,3 @@ Sometimes you want to pass in `--build` to sanity check that the reproducibility
 ```base
 docker-compose run --remove-orphans --build atomization test
 ```
-
-### Lean 4 Visualization
-
-```bash
-python -m src.atomization.lean.visualizer <lean_file.lean>
-```
-
-This will generate visualization files for a Lean 4 source file:
-- `<lean_file>.json` - JSON representation of the dependency graph
-- `<lean_file>.dot` - DOT representation of the dependency graph
-- `<lean_file>.svg` - SVG visualization of the dependency graph
-- `<lean_file>.png` - PNG visualization of the dependency graph
-
-Requirements:
-- Lean 4 toolchain
-- Graphviz for generating SVG/PNG files
-
-Example:
-```bash
-python -m src.atomization.lean.visualizer examples/lean/Atomization/Basic.lean
-```
