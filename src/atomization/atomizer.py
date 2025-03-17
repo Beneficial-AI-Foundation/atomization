@@ -12,7 +12,6 @@ from bidict import bidict
 from atomization.lean.atomizer import atomize_lean
 from pathlib import Path
 from atomization.coq.atomizer import CoqAtomizer
-from atomization.lean.visualizer import visualize_lean_file
 
 
 load_dotenv()
@@ -487,35 +486,6 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         )
 
 
-def execute_visualize_command(file_path: str, output_dir: str | None = None) -> int:
-    """
-    Execute the visualize command:
-     - Takes a Lean file and generates visualization files (JSON, DOT, SVG, PNG)
-     - Handle CLI I/O (printing and error reporting)
-    """
-    try:
-        file_path = Path(file_path)
-        output_dir = Path(output_dir) if output_dir else None
-
-        if not file_path.exists():
-            print(f"Error: File not found - {file_path}")
-            return 1
-
-        if file_path.suffix != ".lean":
-            print(
-                f"Error: Not a Lean file - {file_path}. Only Lean files are supported."
-            )
-            return 1
-
-        print(f"Visualizing Lean file: {file_path}")
-        visualize_lean_file(file_path, output_dir)
-        return 0
-
-    except Exception as e:
-        print(f"Error visualizing file: {e}")
-        return 1
-
-
 def run_atomizer(args: list[str] | None = None) -> int:
     """Parse CLI arguments and dispatch to the appropriate command handler; returns exit code."""
     parsed_args, parser = parse_cli_arguments(args)
@@ -526,8 +496,6 @@ def run_atomizer(args: list[str] | None = None) -> int:
         return execute_delete_command(parsed_args.package_id)
     elif parsed_args.command == "atomize":
         return execute_atomize_command(parsed_args.code_id, parser)
-    elif parsed_args.command == "visualize":
-        return execute_visualize_command(parsed_args.file_path, parsed_args.output_dir)
     else:
         parser.print_help()
         return 1
