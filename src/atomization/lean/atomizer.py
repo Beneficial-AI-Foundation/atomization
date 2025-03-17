@@ -2,8 +2,6 @@
 # %%
 import json
 from pathlib import Path
-from pprint import pprint
-import random
 import subprocess
 from typing import Collection, TypedDict
 from typing import Literal
@@ -151,7 +149,6 @@ def extract_kind(
 
     try:
         type = server.expr_type(type_info)
-        print(f"{type = }")
     except Exception as e:  # TODO refine exception type
         error_str = str(e)
         # Error: unknown universe level '`u'. The [1:] is to drop the backtick.
@@ -161,7 +158,6 @@ def extract_kind(
             type = server.run(
                 "expr.echo", {"expr": type_info, "levels": [universe_level]}
             )["type"]
-            print(f"{type = }")
         except Exception as e:
             print(f"Error 2: {e}")
             raise e
@@ -221,19 +217,8 @@ def atomize_project(
         if (
             sym_parts[0] not in all_excluded_namespaces
             and sym_parts[-1] not in EXCLUDED_SUFFIXES
-            and sym.startswith("Atom_")  # TODO rm, for debugging
         ):
             filtered_symbols.append(sym)
-        # filtered_symbols = [
-    #     sym for sym in catalog if sym.split(".")[0] not in all_excluded_namespaces
-    # ]
-    # Filter even *faster* for debugging purposes by excluding all symbols except those starting with "Atom_".
-    # short_filtered_symbols = [
-    #     sym for sym in filtered_symbols if sym.startswith("Atom_")
-    # ]
-    # print(f"short filtered symbols: {short_filtered_symbols}")
-    # print(f"TestType type: {server.expr_type('Atom_TestType')}")
-    print(f"Filtered symbols length: {len(filtered_symbols)}")
 
     # Dump filtered symbols to JSON for inspection/debugging
     if verbose:
@@ -379,104 +364,6 @@ def de_atomize(
     return out
 
 
-def test_atomizer() -> None:
-    """Test the atomizer functionality using example definitions
-    The code in question is in `{_PROJECT_ROOT}/examples/lean/Atomization/Basic.lean`:
-
-    ```lean
-    def Atom_g := 1
-
-    def Atom_f := 2
-    def Atom_fg := Atom_g + Atom_g
-    def Atom_f' : 2 = 2 := rfl
-
-    theorem Atom_f'' : 2 = 2 := by rfl
-
-    def Atom_fib : Nat → Nat := fun n =>
-    match n with
-    | 0 => 0
-    | 1 => 1
-    | n + 2 => Atom_fib (n + 1) + Atom_fib n
-
-    def Atom_fibImperative (n: Nat) : Nat := Id.run do
-    let mut a : Nat := 0
-    let mut b : Nat := 1
-    for _ in [0:n] do
-    let c := a + b
-    a := b
-    b := c
-    return b
-
-    @[csimp]
-    theorem Atom_fib_spec : @Atom_fib = @Atom_fibImperative := by
-    sorry
-
-    ```
-    """
-
-    # We create a dummy project as an integration test.
-    test_code = (_PROJECT_ROOT / "examples/lean/Atomization/Basic.lean").read_text()
-
-    pkg_id = random.randint(1000, 9999)
-    project_name = f"Pkg{pkg_id}"
-    project_path = Path(f"/tmp/{project_name}")
-    print(f"Creating dummy Lean project at {project_path}")
-    create_dummy_lean_project(test_code, pkg_id)
-    # pantograph needs the Lean project to be built.
-    build_lean_project(project_path)
-
-    server = Server(imports=["Init", project_name], project_path=project_path)
-    # Test atomization
-    all_atoms = atomize_project(server, verbose=True)
-
-    sorted_atoms = sort_atoms(all_atoms)
-    pprint(f"{sorted_atoms = }")
-    # see if sorting affected order of atoms
-    orig_names = [x.name for x in all_atoms]
-    sort_names = [x.name for x in sorted_atoms]
-
-    print(f"Original names: {orig_names}")
-    print(f"Sorted names: {sort_names}")
-
-    # Test g definition
-    # g_def = find_def("Atom_g", all_atoms)
-    # print(g_def)
-
-    # assert g_def.source_code == "def Atom_g := 1", (
-    #     f"Expected source code to be 'def Atom_g := 1', got {g_def.source_code}"
-    # )
-    # assert g_def.type == "Nat", f"Expected type to be 'Nat', got {g_def.type}"
-    # assert g_def.kind == "def", f"Expected kind to be 'def', got {g_def.kind}"
-
-    # # Test fg definition and its dependencies
-    # fg_def = find_def("Atom_fg", all_atoms)
-
-    # assert fg_def.source_code == "def Atom_fg := Atom_g + Atom_g", (
-    #     f"Expected source code to be 'def Atom_fg := Atom_g + Atom_g', got {fg_def.source_code}"
-    # )
-    # assert "Atom_g" in fg_def.value_dependencies, (
-    #     f"Expected value dependencies to include 'Atom_g', got {fg_def.value_dependencies}"
-    # )
-    # assert fg_def.kind == "def", f"Expected kind to be 'def', got {fg_def.kind}"
-
-    # # Test theorem f''
-    # f2_def = find_def("Atom_f''", all_atoms)
-
-    # assert f2_def.type == "2 = 2", f"Expected type to be '2 = 2', got {f2_def.type}"
-    # assert f2_def.kind == "theorem", f"Expected kind to be 'theorem', got {f2_def.kind}"
-
-    # fib_def = find_def("Atom_fib", all_atoms)
-
-    # assert (
-    #     fib_def.source_code
-    #     == "def Atom_fib : Nat → Nat := fun n =>\nmatch n with\n| 0 => 0\n| 1 => 1\n| n + 2 => Atom_fib (n + 1) + Atom_fib n"
-    # ), (
-    #     f"Expected source code to be 'def Atom_fib : Nat → Nat := fun n =>\nmatch n with\n| 0 => 0\n| 1 => 1\n| n + 2 => Atom_fib (n + 1) + Atom_fib n', got {fib_def.source_code}"
-    # )
-
-    print("All tests passed!")
-
-
 class Schema(TypedDict):
     """The schema of an atomized definition."""
 
@@ -589,6 +476,8 @@ def set_toolchain(
     project_root: Path, version: str = "leanprover/lean4:v4.16.0-rc1"
 ) -> None:
     """Set the toolchain for a Lean project."""
+    project_root.mkdir(parents=True, exist_ok=True)
+
     with (project_root / "lean-toolchain").open("w") as f:
         f.write(version)
 
@@ -604,16 +493,26 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     project_root = Path(f"/tmp/{project_name}")
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
-    # `math` is to add a mathlib dependency conveniently.
-    result = subprocess.run(
-        # ["lake", "new", project_name, "math"],
+    
+    # First check if the directory already exists, and if not, create it
+    if not project_root.exists():
+        # `math` is to add a mathlib dependency conveniently.
         # TODO: add back mathlib dependency
-        ["lake", "new", project_name],
-        cwd="/tmp",
-        capture_output=True,
-        text=True,
-    )
-
+        result = subprocess.run(
+            ["lake", "new", project_name],
+            cwd="/tmp",
+            capture_output=True,
+            text=True,
+        )
+        
+        if result.returncode != 0:
+            # If the lake command failed, raise an error with the output
+            raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
+            
+        print(f"Created Lean project at {project_root}")
+        print("Command output:", result.stdout)
+    else:
+        print(f"Using existing Lean project at {project_root}")
     with root_file.open("w") as f:
         f.write(code)
     # write a simple main file that removes the default `def hello := "world"` referenced from `root_file` since it's overwritten by `root_file.open`.
@@ -621,15 +520,10 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
         f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
     set_toolchain(project_root)
 
-    print(f"Created Lean project at {project_root}")
-    print("Command output:", result.stdout)
-
-
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
     set_toolchain(project_root)
     subprocess.run(["lake", "build"], cwd=project_root)
-
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
@@ -646,9 +540,3 @@ def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     schema = atoms_to_schema(sorted_atoms)
 
     return schema
-
-
-if __name__ == "__main__":
-    test_atomizer()
-
-# %%

@@ -23,15 +23,13 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 
 # This is a bidirectional map between language names and their IDs in the database because they're supposed to be unique.
-LANG_MAP: bidict[str, int] = bidict(
-    {
-        "dafny": 1,
-        "lean": 2,
-        "coq": 3,
-        "isabelle": 4,
-        "metamath": 5,
-    }
-)
+LANG_MAP: bidict[str, int] = bidict({
+    "dafny": 1,
+    "lean": 2,
+    "coq": 3,
+    "isabelle": 4,
+    "metamath": 5,
+})
 
 
 class DBConnection:
@@ -269,13 +267,11 @@ def sort_dafny_chunks(result: dict) -> list[dict]:
 
     for chunk_type in ["code", "proof", "spec", "spec+code"]:
         for chunk in result.get(chunk_type, []):
-            all_chunks.append(
-                {
-                    "content": chunk["content"],
-                    "order": chunk["order"],
-                    "type": chunk_type,
-                }
-            )
+            all_chunks.append({
+                "content": chunk["content"],
+                "order": chunk["order"],
+                "type": chunk_type,
+            })
 
     # Sort by order
     return sorted(all_chunks, key=lambda x: x["order"])
@@ -312,6 +308,18 @@ def parse_cli_arguments(
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
     atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
 
+    # Visualize command
+    visualize_parser = subparsers.add_parser(
+        "visualize", help="Visualize Lean code and generate dependency graphs"
+    )
+    visualize_parser.add_argument("file_path", type=str, help="Path to Lean file")
+    visualize_parser.add_argument(
+        "--output-dir",
+        type=str,
+        help="Output directory for visualization files",
+        default=None,
+    )
+
     return parser.parse_args(args), parser
 
 
@@ -327,6 +335,72 @@ def execute_delete_command(package_id: int) -> int:
         logger.info(f"Successfully deleted package {package_id}")
         return 0
     return 1
+
+
+def save_lean_atoms_to_db(parsed_chunks, code_id):
+    """
+    Save atomized Lean code chunks to the database (atoms and atomsdependencies tables).
+    
+    Args:
+        parsed_chunks: List of Schema objects representing atomized Lean code
+        code_id: Code ID from the codes table
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Dictionary to track atom ids by identifier
+            atom_id_map = {}
+            
+            # Function to recursively process atoms and their dependencies
+            def process_atom(atom, parent_id=None):
+                # Skip if we've already processed this atom
+                if atom['identifier'] in atom_id_map:
+                    # If we have a parent, add the dependency relationship
+                    if parent_id is not None:
+                        cursor.execute(
+                            "INSERT INTO atomsdependencies (parentatom_id, childatom_id) VALUES (%s, %s)",
+                            (parent_id, atom_id_map[atom['identifier']])
+                        )
+                    return atom_id_map[atom['identifier']]
+                
+                # Insert the atom into the atoms table
+                # Convert the body to bytes if it's not already
+                body_blob = atom['body'].encode('utf-8') if isinstance(atom['body'], str) else atom['body']
+                cursor.execute(
+                    "INSERT INTO atoms (text, identifier, statement_type, code_id) VALUES (%s, %s, %s, %s)",
+                    (body_blob, atom['identifier'], atom['type'], code_id)
+                )
+                atom_id = cursor.lastrowid
+                atom_id_map[atom['identifier']] = atom_id
+                
+                # If there's a parent, add the dependency relationship
+                if parent_id is not None:
+                    cursor.execute(
+                        "INSERT INTO atomsdependencies (parentatom_id, childatom_id) VALUES (%s, %s)",
+                        (parent_id, atom_id)
+                    )
+                
+                # Process dependencies recursively
+                for dep in atom.get('deps', []):
+                    process_atom(dep, atom_id)
+                
+                return atom_id
+            
+            # Process all top-level atoms
+            for atom in parsed_chunks:
+                process_atom(atom)
+            
+            conn.commit()
+            logger.info(f"Successfully saved {len(atom_id_map)} atoms to database")
+            return True
+            
+    except MysqlConnectorError as e:
+        logger.error(f"Database error while saving atoms: {e}")
+        return False
 
 
 def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> int:
@@ -352,31 +426,55 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             parsed_chunks = atomize_dafny(decoded_content)
             print(f"Atomizing Dafny code with ID {code_id}")
         elif code_language_id == LANG_MAP["lean"]:
+            # For Lean, we need a different approach
+            print(f"Atomizing Lean code with ID {code_id}")
             parsed_chunks = atomize_lean(decoded_content, code_id)
+            
+            # Save Lean atoms to database (atoms and atomsdependencies tables)
+            if parsed_chunks:
+                if save_lean_atoms_to_db(parsed_chunks, code_id):
+                    logger.info(f"Successfully saved Lean atoms for code {code_id}")
+                else:
+                    logger.error(f"Failed to save Lean atoms for code {code_id}")
+                    return 1
+            
+            # Convert Lean atoms to snippets format for consistency with other languages
+            # Note: This is a simplified conversion for display and snippet creation
+            snippet_chunks = []
+            for atom in parsed_chunks:
+                snippet_chunks.append({
+                    "content": atom["body"],
+                    "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                    "type": atom["type"]
+                })
+            parsed_chunks = snippet_chunks
+            
         elif code_language_id == LANG_MAP["coq"]:
             parsed_chunks = atomize_coq(decoded_content)
             print(f"Atomizing Coq code with ID {code_id}")
         else:
             print("Language not supported yet")
             return 1
-
+            
         # Business Logic: Format and display the atomized result
         result = jsonify_vlib(parsed_chunks)
         pprint(result)
 
-        # DB Operation: Create package and snippet records
-        new_pkg_id = create_package_entry(code_id, code_language_id)
-        if new_pkg_id:
-            logger.info(f"Successfully created package with ID {new_pkg_id}")
-            if create_snippets(new_pkg_id, code_language_id, parsed_chunks):
-                logger.info("Successfully created snippets")
+        if code_language_id == LANG_MAP["dafny"]:
+            # DB Operation: Create package and snippet records
+            new_pkg_id = create_package_entry(code_id, code_language_id)
+            if new_pkg_id:
+                logger.info(f"Successfully created package with ID {new_pkg_id}")
+                if create_snippets(new_pkg_id, code_language_id, parsed_chunks):
+                    logger.info("Successfully created snippets")
+                else:
+                    logger.error("Failed to create snippets")
+                    return 1
             else:
-                logger.error("Failed to create snippets")
+                logger.error("Failed to create package entry")
                 return 1
         else:
-            logger.error("Failed to create package entry")
-            return 1
-
+            print("Skipping package and snippet creation for non-Dafny code until atomization stage 2 renders in the code/spec/proof style")
         return 0
 
     except ValueError as e:
