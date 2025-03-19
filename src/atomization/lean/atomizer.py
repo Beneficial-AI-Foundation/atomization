@@ -522,7 +522,7 @@ leanOptions := #[
 -- add any additional package configuration options here
 
 require mathlib from git
-"https://github.com/leanprover-community/mathlib4.git"@"master"
+"https://github.com/leanprover-community/mathlib4.git"@"0f1810248782d0843a813d22979f4fa77f0f9db5"
 
 @[default_target]
 lean_lib «{project_name}» where
