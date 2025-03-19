@@ -483,12 +483,7 @@ def set_toolchain(
 
 
 def create_dummy_lean_project(code: str, pkg_id: int) -> None:
-    """Create a dummy Lean project in `/tmp/Pkg{pkg_id}`.
-
-    `code`: all the code in one big file.
-
-    TODO: this should be a function that takes in a `dict[Path (relative to project root), str (code)]` and creates a project with them.
-    """
+    """Create a dummy Lean project in `/tmp/Pkg{pkg_id}`."""
     project_name = f"Pkg{pkg_id}"
     project_root = Path(f"/tmp/{project_name}")
     root_file = project_root / f"{project_name}.lean"
@@ -496,8 +491,6 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     
     # First check if the directory already exists, and if not, create it
     if not project_root.exists():
-        # `math` is to add a mathlib dependency conveniently.
-        # TODO: add back mathlib dependency
         result = subprocess.run(
             ["lake", "new", project_name],
             cwd="/tmp",
@@ -506,25 +499,57 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
         )
         
         if result.returncode != 0:
-            # If the lake command failed, raise an error with the output
             raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
             
         print(f"Created Lean project at {project_root}")
         print("Command output:", result.stdout)
     else:
         print(f"Using existing Lean project at {project_root}")
-    with root_file.open("w") as f:
+    
+    # Create a proper lakefile.lean with mathlib support
+    lakefile_content = f"""import Lake
+open Lake DSL
+
+package «{project_name}» where
+-- Settings applied to both builds and interactive editing
+leanOptions := #[
+    ⟨`pp.unicode.fun, true⟩ -- pretty-prints `fun a ↦ b`
+]
+-- add any additional package configuration options here
+
+require mathlib from git
+"https://github.com/leanprover-community/mathlib4.git"@"v4.13.0"
+
+@[default_target]
+lean_lib «{project_name}» where
+-- add any library configuration options here
+"""
+    
+    with open(project_root / "lakefile.lean", "w") as f:
+        f.write(lakefile_content)
+        
+    # Set the Lean toolchain version to match mathlib
+    with open(project_root / "lean-toolchain", "w") as f:
+        f.write("leanprover/lean4:v4.13.0\n")
+        
+    # Write the code to the root file
+    with open(root_file, "w") as f:
         f.write(code)
-    # write a simple main file that removes the default `def hello := "world"` referenced from `root_file` since it's overwritten by `root_file.open`.
-    with main_file.open("w") as f:
+        
+    # Write a simple main file
+    with open(main_file, "w") as f:
         f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
-    set_toolchain(project_root)
 
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
-    set_toolchain(project_root)
-    subprocess.run(["lake", "update"], cwd=project_root, check=False)
-    subprocess.run(["lake", "build"], cwd=project_root)
+    print("Running lake update...")
+    update_result = subprocess.run(["lake", "update"], cwd=project_root, capture_output=True, text=True)
+    if update_result.returncode != 0:
+        print(f"Warning: lake update failed: {update_result.stderr}")
+    print("Running lake build...")
+    build_result = subprocess.run(["lake", "build"], cwd=project_root, capture_output=True, text=True)
+    print(f"Build output: {build_result.stdout}")
+    print(f"Build errors: {build_result.stderr}")
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
