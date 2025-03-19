@@ -483,9 +483,12 @@ def set_toolchain(
 
 
 def create_dummy_lean_project(code: str, pkg_id: int) -> None:
-    """Create a dummy Lean project in `/tmp/Pkg{pkg_id}`."""
+    """Create a dummy Lean project in `/home/ec2-user/lean_projects/Pkg{pkg_id}`."""
     project_name = f"Pkg{pkg_id}"
-    project_root = Path(f"/tmp/{project_name}")
+    # Create base directory for Lean projects in home directory
+    base_dir = Path("/home/ec2-user/lean_projects") #Path.home() / "lean_projects"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    project_root = base_dir / project_name
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
     
@@ -493,7 +496,7 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     if not project_root.exists():
         result = subprocess.run(
             ["lake", "new", project_name],
-            cwd="/tmp",
+            cwd=str(base_dir),
             capture_output=True,
             text=True,
         )
@@ -554,7 +557,7 @@ def build_lean_project(project_root: Path) -> None:
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
     project_name = f"Pkg{pkg_id}"
-    project_root = Path(f"/tmp/{project_name}")
+    project_root = Path(f"/home/ec2-user/lean_projects/{project_name}")
 
     create_dummy_lean_project(code, pkg_id)
     build_lean_project(project_root)
