@@ -534,7 +534,7 @@ lean_lib «{project_name}» where
         
     # Set the Lean toolchain version to match your system
     with open(project_root / "lean-toolchain", "w") as f:
-        f.write("leanprover/lean4:v4.17.0\n")
+        f.write("leanprover/lean4:v4.16.0-rc1\n")
         
     # Write the code to the root file
     with open(root_file, "w") as f:
