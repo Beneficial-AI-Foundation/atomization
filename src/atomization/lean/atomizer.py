@@ -486,8 +486,9 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     """Create a dummy Lean project in `/home/ec2-user/lean_projects/Pkg{pkg_id}`."""
     project_name = f"Pkg{pkg_id}"
     # Create base directory for Lean projects in home directory
-    base_dir = Path("/home/ec2-user/lean_projects") #Path.home() / "lean_projects"
+    base_dir = Path("/home/ec2-user/lean_projects")
     base_dir.mkdir(parents=True, exist_ok=True)
+    
     project_root = base_dir / project_name
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
@@ -521,7 +522,7 @@ leanOptions := #[
 -- add any additional package configuration options here
 
 require mathlib from git
-"https://github.com/leanprover-community/mathlib4.git"@"v4.13.0"
+"https://github.com/leanprover-community/mathlib4.git"@"master"
 
 @[default_target]
 lean_lib «{project_name}» where
@@ -531,9 +532,9 @@ lean_lib «{project_name}» where
     with open(project_root / "lakefile.lean", "w") as f:
         f.write(lakefile_content)
         
-    # Set the Lean toolchain version to match mathlib
+    # Set the Lean toolchain version to match your system
     with open(project_root / "lean-toolchain", "w") as f:
-        f.write("leanprover/lean4:v4.13.0\n")
+        f.write("leanprover/lean4:v4.17.0\n")
         
     # Write the code to the root file
     with open(root_file, "w") as f:
