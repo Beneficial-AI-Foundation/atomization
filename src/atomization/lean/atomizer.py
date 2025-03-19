@@ -523,6 +523,7 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
     set_toolchain(project_root)
+    subprocess.run(["lake", "update"], cwd=project_root, check=False)
     subprocess.run(["lake", "build"], cwd=project_root)
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
