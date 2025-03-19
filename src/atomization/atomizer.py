@@ -24,13 +24,15 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 
 # This is a bidirectional map between language names and their IDs in the database because they're supposed to be unique.
-LANG_MAP: bidict[str, int] = bidict({
-    "dafny": 1,
-    "lean": 2,
-    "coq": 3,
-    "isabelle": 4,
-    "metamath": 5,
-})
+LANG_MAP: bidict[str, int] = bidict(
+    {
+        "dafny": 1,
+        "lean": 2,
+        "coq": 3,
+        "isabelle": 4,
+        "metamath": 5,
+    }
+)
 
 
 class DBConnection:
@@ -268,11 +270,13 @@ def sort_dafny_chunks(result: dict) -> list[dict]:
 
     for chunk_type in ["code", "proof", "spec", "spec+code"]:
         for chunk in result.get(chunk_type, []):
-            all_chunks.append({
-                "content": chunk["content"],
-                "order": chunk["order"],
-                "type": chunk_type,
-            })
+            all_chunks.append(
+                {
+                    "content": chunk["content"],
+                    "order": chunk["order"],
+                    "type": chunk_type,
+                }
+            )
 
     # Sort by order
     return sorted(all_chunks, key=lambda x: x["order"])
@@ -342,11 +346,11 @@ def save_atoms_to_db(parsed_chunks, code_id):
     """
     Save atomized code chunks to the database (atoms and atomsdependencies tables).
     Handles both Lean format (deps as full atoms) and Isabelle format (deps as identifiers).
-    
+
     Args:
         parsed_chunks: Dict of atoms with dependencies
         code_id: Code ID from the codes table
-    
+
     Returns:
         bool: True if successful, False otherwise
 
@@ -356,43 +360,66 @@ def save_atoms_to_db(parsed_chunks, code_id):
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
-            
+
             # Dictionary to track atom ids by identifier
             atom_id_map = {}
 
             # First pass: Insert all atoms (O(N))
-            for atom in parsed_chunks["Atoms"] if isinstance(parsed_chunks, dict) else parsed_chunks:
-                identifier = atom['identifier']
-                body_blob = atom['body'].encode('utf-8') if isinstance(atom['body'], str) else atom['body']
+            for atom in (
+                parsed_chunks["Atoms"]
+                if isinstance(parsed_chunks, dict)
+                else parsed_chunks
+            ):
+                identifier = atom["identifier"]
+                body_blob = (
+                    atom["body"].encode("utf-8")
+                    if isinstance(atom["body"], str)
+                    else atom["body"]
+                )
                 print(f"Inserting atom {identifier} with body: {body_blob}")
                 cursor.execute(
                     "INSERT INTO atoms (text, identifier, statement_type, code_id) VALUES (%s, %s, %s, %s)",
-                    (body_blob, identifier, atom.get('type', atom.get('statement_type')), code_id)
+                    (
+                        body_blob,
+                        identifier,
+                        atom.get("type", atom.get("statement_type")),
+                        code_id,
+                    ),
                 )
                 atom_id_map[identifier] = cursor.lastrowid
 
             # Second pass: Insert all dependencies (O(E))
-            for atom in parsed_chunks["Atoms"] if isinstance(parsed_chunks, dict) else parsed_chunks:
-                parent_id = atom_id_map[atom['identifier']]
-                deps = atom['deps']
-                
+            for atom in (
+                parsed_chunks["Atoms"]
+                if isinstance(parsed_chunks, dict)
+                else parsed_chunks
+            ):
+                parent_id = atom_id_map[atom["identifier"]]
+                deps = atom["deps"]
+
                 # Handle both dependency formats
-                if deps and isinstance(deps[0], str):  # Isabelle format: deps are identifiers
+                if deps and isinstance(
+                    deps[0], str
+                ):  # Isabelle format: deps are identifiers
                     dep_ids = [(parent_id, atom_id_map[dep]) for dep in deps]
                 else:  # Lean format: deps are full atoms
-                    dep_ids = [(parent_id, atom_id_map[dep['identifier']]) for dep in deps]
+                    dep_ids = [
+                        (parent_id, atom_id_map[dep["identifier"]]) for dep in deps
+                    ]
 
                 if dep_ids:
-                    print(f"Inserting dependencies for atom {atom['identifier']}: {dep_ids}")
+                    print(
+                        f"Inserting dependencies for atom {atom['identifier']}: {dep_ids}"
+                    )
                     cursor.executemany(
                         "INSERT INTO atomsdependencies (parentatom_id, childatom_id) VALUES (%s, %s)",
-                        dep_ids
+                        dep_ids,
                     )
-            
+
             conn.commit()
             logger.info(f"Successfully saved {len(atom_id_map)} atoms to database")
             return True
-            
+
     except MysqlConnectorError as e:
         logger.error(f"Database error while saving atoms: {e}")
         return False
@@ -424,7 +451,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             # For Lean, we need a different approach
             print(f"Atomizing Lean code with ID {code_id}")
             parsed_chunks = atomize_lean(decoded_content, code_id)
-            
+
             # Save Lean atoms to database (atoms and atomsdependencies tables)
             if parsed_chunks:
                 if save_atoms_to_db(parsed_chunks, code_id):
@@ -432,20 +459,22 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
                 else:
                     logger.error(f"Failed to save Lean atoms for code {code_id}")
                     return 1
-            
+
             # Convert Lean atoms to snippets format for consistency with other languages
             # Note: This is a simplified conversion for display and snippet creation
             snippet_chunks = []
             for atom in parsed_chunks:
-                snippet_chunks.append({
-                    "content": atom["body"],
-                    "order": len(snippet_chunks) + 1,  # Simple sequential ordering
-                    "type": atom["type"]
-                })
-            parsed_chunks = snippet_chunks     
+                snippet_chunks.append(
+                    {
+                        "content": atom["body"],
+                        "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                        "type": atom["type"],
+                    }
+                )
+            parsed_chunks = snippet_chunks
         elif code_language_id == LANG_MAP["coq"]:
             print(f"Atomizing Coq code with ID {code_id}")
-            parsed_chunks = atomize_coq(decoded_content) 
+            parsed_chunks = atomize_coq(decoded_content)
         elif code_language_id == LANG_MAP["isabelle"]:
             print(f"Atomizing Isabelle code with ID {code_id}")
             parsed_chunks = atomize_isa(decoded_content)
@@ -460,7 +489,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         else:
             print("Language not supported yet")
             return 1
-            
+
         # Business Logic: Format and display the atomized result
         result = jsonify_vlib(parsed_chunks)
         pprint(result)
@@ -479,7 +508,9 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
                 logger.error("Failed to create package entry")
                 return 1
         else:
-            print("Skipping package and snippet creation for non-Dafny code until atomization stage 2 renders in the code/spec/proof style")
+            print(
+                "Skipping package and snippet creation for non-Dafny code until atomization stage 2 renders in the code/spec/proof style"
+            )
         return 0
 
     except ValueError as e:

@@ -8,28 +8,31 @@ from pathlib import Path
 
 class TheoryParseError(Exception):
     """Raised when unable to parse theory name from content."""
+
     pass
 
 
 def extract_theory_name(theory_content: str) -> str:
     """Extract theory name from content using regex.
-    
+
     Args:
         theory_content: The content of the theory file
-        
+
     Returns:
         The theory name
-        
+
     Raises:
         TheoryParseError: If no theory name can be found in the content
-        
+
     Example:
         >>> extract_theory_name('theory MyTheory\\nimports Main\\nbegin')
         'MyTheory'
     """
-    match = re.search(r'theory\s+(\w+)', theory_content)
+    match = re.search(r"theory\s+(\w+)", theory_content)
     if not match:
-        raise TheoryParseError("Could not find theory name in content. Expected 'theory <name>'")
+        raise TheoryParseError(
+            "Could not find theory name in content. Expected 'theory <name>'"
+        )
     return match.group(1)
 
 
@@ -50,15 +53,15 @@ def atomize_isa(theory_content: str) -> dict:
     # Create temporary directory for both theory file and output
     with tempfile.TemporaryDirectory() as temp_dir:
         output_dir = Path(temp_dir)
-        
+
         try:
             # Extract theory name and create theory file
             theory_name = extract_theory_name(theory_content)
         except TheoryParseError as e:
             raise ValueError(str(e))
-        
+
         theory_path = output_dir / f"{theory_name}.thy"
-        
+
         # Write theory content to temporary file
         with open(theory_path, "w", encoding="utf-8") as theory_file:
             theory_file.write(theory_content)
@@ -76,7 +79,7 @@ def atomize_isa(theory_content: str) -> dict:
                 str(scala_file),
                 str(theory_path),
                 str(output_dir),
-                str(latex_mapping)
+                str(latex_mapping),
             ]
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
 
@@ -90,9 +93,9 @@ def atomize_isa(theory_content: str) -> dict:
                 )
 
             # Read and parse JSON content
-            with open(json_path, encoding='utf-8') as f:
+            with open(json_path, encoding="utf-8") as f:
                 atoms_dict = json.load(f)
-                
+
             return atoms_dict
 
         except subprocess.CalledProcessError as e:
