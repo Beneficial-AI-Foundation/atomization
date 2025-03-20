@@ -65,6 +65,14 @@ def lean_atoms():
     ]
 
 
+@pytest.fixture
+def mock_existing_atoms(mock_db_connection):
+    """Mock cursor to simulate existing atoms in DB"""
+    # Setup mock to return existing atoms for const_def
+    mock_db_connection.fetchall.return_value = [{"identifier": "const_def", "id": 42}]
+    return mock_db_connection
+
+
 def test_save_isabelle_atoms(mock_db_connection, isabelle_atoms):
     """Test saving Isabelle atoms with string dependencies"""
     code_id = 123
@@ -165,6 +173,89 @@ def test_batch_dependency_insertion(mock_db_connection, isabelle_atoms):
     executemany_calls = mock_db_connection.executemany.call_args_list
     assert len(executemany_calls) > 0
     assert "INSERT INTO atomsdependencies" in executemany_calls[0][0][0]
+
+
+def test_skip_existing_atoms(mock_existing_atoms, isabelle_atoms):
+    """Test that existing atoms are skipped but used for dependencies"""
+    code_id = 123
+
+    # Setup mock to return different results for different queries
+    def mock_fetchall_side_effect():
+        if not hasattr(mock_fetchall_side_effect, "call_count"):
+            mock_fetchall_side_effect.call_count = 0
+        mock_fetchall_side_effect.call_count += 1
+
+        # First call: for existing atoms
+        if mock_fetchall_side_effect.call_count == 1:
+            return [{"identifier": "const_def", "id": 42}]
+        # All subsequent calls: for existing dependencies (none)
+        return [{"childatom_id": None}]  # Empty result but with correct column name
+
+    mock_existing_atoms.fetchall.side_effect = mock_fetchall_side_effect
+
+    save_atoms_to_db(isabelle_atoms, code_id)
+
+    # Get all atom insertions
+    atom_inserts = [
+        c
+        for c in mock_existing_atoms.execute.call_args_list
+        if "INSERT INTO atoms" in c[0][0]
+    ]
+
+    # Should only insert 2 atoms (const_lemma and main_theorem)
+    # const_def should be skipped as it already exists
+    assert len(atom_inserts) == 2
+    assert all("const_def" not in str(c) for c in atom_inserts)
+
+    # But const_def's ID should still be used in dependencies
+    dep_inserts = [
+        c
+        for c in mock_existing_atoms.executemany.call_args_list
+        if "INSERT INTO atomsdependencies" in c[0][0]
+    ]
+    assert len(dep_inserts) == 2
+
+    # Verify const_lemma still depends on const_def using its existing ID
+    first_dep = dep_inserts[0]
+    dep_values = first_dep[0][1]  # Get the values being inserted
+    assert len(dep_values) == 1  # One dependency
+    assert 42 in dep_values[0]  # Should use existing ID 42
+
+
+def test_skip_existing_dependencies(mock_existing_atoms, isabelle_atoms):
+    """Test that dependency insertions occur when no duplicates exist"""
+    code_id = 123
+
+    # Setup fetchall to return different values based on call count.
+    def mock_fetchall_side_effect():
+        if not hasattr(mock_fetchall_side_effect, "call_count"):
+            mock_fetchall_side_effect.call_count = 0
+        mock_fetchall_side_effect.call_count += 1
+        if mock_fetchall_side_effect.call_count == 1:
+            # First call: for existing atoms query; return valid row.
+            return [{"identifier": "const_def", "id": 42}]
+        else:
+            # For dependency queries, return empty list.
+            return []
+
+    mock_existing_atoms.fetchall.side_effect = mock_fetchall_side_effect
+
+    save_atoms_to_db(isabelle_atoms, code_id)
+
+    # Collect all dependency insertions (each call's second argument is a list of tuples)
+    dep_inserts = [
+        call[0][1]
+        for call in mock_existing_atoms.executemany.call_args_list
+        if "INSERT INTO atomsdependencies" in call[0][0]
+    ]
+    # Sum the lengths of dependency lists (for both const_lemma and main_theorem)
+    total_deps_inserted = sum(len(deps) for deps in dep_inserts)
+
+    # For isabelle_atoms, we have two dependencies:
+    #  - const_lemma depends on const_def
+    #  - main_theorem depends on const_lemma.
+    # So we expect 2 total dependency insertions.
+    assert total_deps_inserted == 2
 
 
 if __name__ == "__main__":

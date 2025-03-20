@@ -346,6 +346,7 @@ def save_atoms_to_db(parsed_chunks, code_id):
     """
     Save atomized code chunks to the database (atoms and atomsdependencies tables).
     Handles both Lean format (deps as full atoms) and Isabelle format (deps as identifiers).
+    Only inserts atoms that don't already exist for this code_id.
 
     Args:
         parsed_chunks: Dict of atoms with dependencies
@@ -353,9 +354,6 @@ def save_atoms_to_db(parsed_chunks, code_id):
 
     Returns:
         bool: True if successful, False otherwise
-
-    Time Complexity: O(N + E) where N is number of atoms and E is number of dependencies
-    Space Complexity: O(N) for the atom_id_map
     """
     try:
         with DBConnection() as conn:
@@ -364,19 +362,35 @@ def save_atoms_to_db(parsed_chunks, code_id):
             # Dictionary to track atom ids by identifier
             atom_id_map = {}
 
-            # First pass: Insert all atoms (O(N))
-            for atom in (
+            # Get existing atoms for this code_id to avoid duplicates
+            cursor.execute(
+                "SELECT identifier, id FROM atoms WHERE code_id = %s", (code_id,)
+            )
+            existing_atoms = {row["identifier"]: row["id"] for row in cursor.fetchall()}
+
+            # First pass: Insert new atoms (O(N))
+            atoms_to_process = (
                 parsed_chunks["Atoms"]
                 if isinstance(parsed_chunks, dict)
                 else parsed_chunks
-            ):
+            )
+            for atom in atoms_to_process:
                 identifier = atom["identifier"]
+
+                if identifier in existing_atoms:
+                    # Skip insert but track the ID for dependencies
+                    atom_id_map[identifier] = existing_atoms[identifier]
+                    print(
+                        f"Atom {identifier} already exists with id {existing_atoms[identifier]}"
+                    )
+                    continue
+
                 body_blob = (
                     atom["body"].encode("utf-8")
                     if isinstance(atom["body"], str)
                     else atom["body"]
                 )
-                print(f"Inserting atom {identifier} with body: {body_blob}")
+                print(f"Inserting new atom {identifier}")
                 cursor.execute(
                     "INSERT INTO atoms (text, identifier, statement_type, code_id) VALUES (%s, %s, %s, %s)",
                     (
@@ -388,28 +402,46 @@ def save_atoms_to_db(parsed_chunks, code_id):
                 )
                 atom_id_map[identifier] = cursor.lastrowid
 
-            # Second pass: Insert all dependencies (O(E))
-            for atom in (
-                parsed_chunks["Atoms"]
-                if isinstance(parsed_chunks, dict)
-                else parsed_chunks
-            ):
+            # Second pass: Insert new dependencies (O(E))
+            for atom in atoms_to_process:
                 parent_id = atom_id_map[atom["identifier"]]
                 deps = atom["deps"]
+
+                # Check for existing dependencies
+                cursor.execute(
+                    """
+                    SELECT DISTINCT childatom_id 
+                    FROM atomsdependencies 
+                    WHERE parentatom_id = %s 
+                    AND childatom_id IS NOT NULL
+                    """,
+                    (parent_id,),
+                )
+                existing_deps = {
+                    row.get("childatom_id")
+                    for row in cursor.fetchall()
+                    if row.get("childatom_id") is not None
+                }
 
                 # Handle both dependency formats
                 if deps and isinstance(
                     deps[0], str
                 ):  # Isabelle format: deps are identifiers
-                    dep_ids = [(parent_id, atom_id_map[dep]) for dep in deps]
+                    dep_ids = [
+                        (parent_id, atom_id_map[dep])
+                        for dep in deps
+                        if atom_id_map[dep] not in existing_deps
+                    ]
                 else:  # Lean format: deps are full atoms
                     dep_ids = [
-                        (parent_id, atom_id_map[dep["identifier"]]) for dep in deps
+                        (parent_id, atom_id_map[dep["identifier"]])
+                        for dep in deps
+                        if atom_id_map[dep["identifier"]] not in existing_deps
                     ]
 
                 if dep_ids:
                     print(
-                        f"Inserting dependencies for atom {atom['identifier']}: {dep_ids}"
+                        f"Inserting new dependencies for atom {atom['identifier']}: {dep_ids}"
                     )
                     cursor.executemany(
                         "INSERT INTO atomsdependencies (parentatom_id, childatom_id) VALUES (%s, %s)",
@@ -417,7 +449,7 @@ def save_atoms_to_db(parsed_chunks, code_id):
                     )
 
             conn.commit()
-            logger.info(f"Successfully saved {len(atom_id_map)} atoms to database")
+            logger.info(f"Successfully processed {len(atom_id_map)} atoms")
             return True
 
     except MysqlConnectorError as e:
