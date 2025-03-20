@@ -117,8 +117,8 @@ if __name__ == "__main__":
         if not theory_file.exists():
             print(f"Error: File not found - {theory_file}", file=sys.stderr)
             sys.exit(1)
-            
-        theory_content = theory_file.read_text(encoding='utf-8')
+
+        theory_content = theory_file.read_text(encoding="utf-8")
         json_content = atomize_isa(theory_content)
         print(json_content)
     except Exception as e:
