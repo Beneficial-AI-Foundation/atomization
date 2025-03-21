@@ -547,13 +547,39 @@ lean_lib «{project_name}» where
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
     print("Running lake update...")
-    update_result = subprocess.run(["lake", "update"], cwd=project_root, capture_output=True, text=True)
-    if update_result.returncode != 0:
-        print(f"Warning: lake update failed: {update_result.stderr}")
+    
+    # Stream output from lake update
+    update_result = subprocess.run(
+        ["lake", "update"], 
+        cwd=project_root,
+        stdout=subprocess.PIPE,  # Still capture for return code checking
+        stderr=subprocess.STDOUT,  # Combine stderr with stdout
+        text=True,
+        bufsize=1,  # Line buffered
+        universal_newlines=True
+    )
+    
+    # Stream output from lake build
     print("Running lake build...")
-    build_result = subprocess.run(["lake", "build"], cwd=project_root, capture_output=True, text=True)
-    print(f"Build output: {build_result.stdout}")
-    print(f"Build errors: {build_result.stderr}")
+    build_process = subprocess.Popen(
+        ["lake", "build"],
+        cwd=project_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        universal_newlines=True
+    )
+    
+    # Print output as it comes
+    for line in build_process.stdout:
+        print(line, end='')
+    
+    # Wait for process to complete and get return code
+    build_process.wait()
+    
+    if build_process.returncode != 0:
+        print(f"Warning: lake build failed with return code {build_process.returncode}")
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
