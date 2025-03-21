@@ -1,6 +1,6 @@
 import pytest
 from mysql.connector import Error as MysqlConnectorError
-from atomization.atomizer import delete_all_atoms
+from atomization.atomizer import delete_code_atoms
 
 
 # Updated fixture: return the connection mock instead of the cursor.
@@ -17,7 +17,7 @@ def mock_db_connection(mocker):
 
 def test_delete_all_atoms_success(mock_db_connection):
     """Test that delete_all_atoms returns True and executes the correct queries."""
-    result = delete_all_atoms()
+    result = delete_code_atoms(1)
     calls = [
         call[0][0]
         for call in mock_db_connection.cursor.return_value.execute.call_args_list
@@ -29,10 +29,10 @@ def test_delete_all_atoms_success(mock_db_connection):
     assert result is True
 
 
-def test_delete_all_atoms_failure(mock_db_connection):
+def test_delete_code_atoms_failure(mock_db_connection):
     """Test that delete_all_atoms returns False when a database error occurs."""
     mock_db_connection.cursor.return_value.execute.side_effect = MysqlConnectorError(
         "DB error"
     )
-    result = delete_all_atoms()
+    result = delete_code_atoms(1)
     assert result is False
