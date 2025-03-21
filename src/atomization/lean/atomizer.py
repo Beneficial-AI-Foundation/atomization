@@ -155,9 +155,12 @@ def extract_kind(
         universe_level = error_str.split("'")[1][1:]
         # probably an inductive, missing universe levels
         try:
+            print(f"Trying again with universe level {universe_level} and type {type_info}")
             type = server.run(
                 "expr.echo", {"expr": type_info, "levels": [universe_level]}
-            )["type"]
+            )
+            print(f"Success! Type is {type}")
+            # type = type["type"]
         except Exception as e:
             print(f"Error 2: {e}")
             raise e
