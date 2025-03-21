@@ -1,5 +1,4 @@
 import subprocess
-import sys
 import json
 import tempfile
 import re
@@ -103,24 +102,3 @@ def atomize_isa(theory_content: str) -> dict:
             print(f"stdout: {e.stdout}")
             print(f"stderr: {e.stderr}")
             raise
-
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python atomizer.py <theory_file.thy>")
-        print("Takes a theory file and outputs the JSON to stdout")
-        sys.exit(1)
-
-    try:
-        # Read theory content from file
-        theory_file = Path(sys.argv[1])
-        if not theory_file.exists():
-            print(f"Error: File not found - {theory_file}", file=sys.stderr)
-            sys.exit(1)
-
-        theory_content = theory_file.read_text(encoding="utf-8")
-        json_content = atomize_isa(theory_content)
-        print(json_content)
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)

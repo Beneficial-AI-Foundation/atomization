@@ -198,7 +198,3 @@ def test_json_schema_validation(simple_theory_content):
         assert all(isinstance(dep, str) for dep in atom["deps"]), (
             "All dependencies should be strings"
         )
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
