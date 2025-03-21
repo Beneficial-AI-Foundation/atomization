@@ -182,15 +182,19 @@ def extract_source_code(
     file_path: Path,
 ) -> str:
     """Extract the source code of a definition."""
-    with file_path.open() as f:
-        lines = f.readlines()
-    # Slice lines from start_line to end_line (1-based -> 0-based)
-    relevant_lines = lines[info.start_line - 1 : info.end_line]
-    # Truncate the first line by start_col and the last line by end_col+1
-    relevant_lines[0] = relevant_lines[0][info.start_col :]
-    relevant_lines[-1] = relevant_lines[-1][: info.end_col + 1]
-    # Join into one big string
-    return "".join(relevant_lines)
+    try:
+        with file_path.open() as f:
+            lines = f.readlines()
+        # Slice lines from start_line to end_line (1-based -> 0-based)
+        relevant_lines = lines[info.start_line - 1 : info.end_line]
+        # Truncate the first line by start_col and the last line by end_col+1
+        relevant_lines[0] = relevant_lines[0][info.start_col :]
+        relevant_lines[-1] = relevant_lines[-1][: info.end_col + 1]
+        # Join into one big string
+        return "".join(relevant_lines)
+    except Exception as e:
+        print(f"Error extracting source code: {e}")
+        return ""
 
 
 def atomize_project(
