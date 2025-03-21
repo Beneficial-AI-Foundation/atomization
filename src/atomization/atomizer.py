@@ -341,6 +341,14 @@ def execute_delete_command(package_id: int) -> int:
         return 0
     return 1
 
+def execute_atom_delete_command(code_id: int) -> int:
+    """Execute the delete command by handling related DB cleanup."""
+    print(f"Deleting atoms for code {code_id}")
+    if delete_code_atoms(code_id):
+        logger.info(f"Successfully deleted atoms and atomsdependencies for code {code_id}")
+        return 0
+    return 1
+
 
 def save_atoms_to_db(parsed_chunks, code_id):
     """
@@ -442,9 +450,12 @@ def save_atoms_to_db(parsed_chunks, code_id):
         return False
 
 
-def delete_all_atoms() -> bool:
+def delete_code_atoms(code_id: int) -> bool:
     """
-    Delete all entries from the 'atomsdependencies' and 'atoms' tables.
+    Delete all entries from the 'atomsdependencies' and 'atoms' tables for a given code_id.
+
+    Args:
+        code_id (int): The ID of the code whose atoms and dependencies are to be deleted.
 
     Returns:
         True if deletion was successful, False otherwise.
@@ -453,13 +464,13 @@ def delete_all_atoms() -> bool:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
             # Delete dependencies first to avoid foreign key conflicts
-            cursor.execute("DELETE FROM atomsdependencies")
-            cursor.execute("DELETE FROM atoms")
+            cursor.execute("DELETE FROM atomsdependencies WHERE atom_id IN (SELECT id FROM atoms WHERE code_id = %s)", (code_id,))
+            cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
             conn.commit()
-            logger.info("Successfully deleted all atoms and their dependencies")
+            logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
             return True
     except MysqlConnectorError as e:
-        logger.error(f"Database error while deleting all atoms: {e}")
+        logger.error(f"Database error while deleting all atoms for code_id {code_id}: {e}")
         return False
 
 
@@ -565,6 +576,8 @@ def run_atomizer(args: list[str] | None = None) -> int:
         return execute_test_command()
     elif parsed_args.command == "delete":
         return execute_delete_command(parsed_args.package_id)
+    elif parsed_args.command == "delete-atoms":
+        return execute_atom_delete_command(parsed_args.code_id)
     elif parsed_args.command == "atomize":
         return execute_atomize_command(parsed_args.code_id, parser)
     else:
