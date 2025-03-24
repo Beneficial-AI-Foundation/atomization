@@ -136,45 +136,6 @@ def is_builtin(
     return module_parts[0] in exclude_namespaces
 
 
-def extract_kind(
-    name: SymbolName, server: Server, inspect_cache: dict[str, dict] | None = None
-) -> Kind | None:
-    """Extract the kind of definition (def/theorem/etc) from source"""
-    if inspect_cache and name in inspect_cache:
-        type_info = inspect_cache[name]["type"]["pp"]
-    else:
-        type_info = server.env_inspect(
-            name=name, print_value=True, print_dependency=True
-        )["type"]["pp"]
-
-    try:
-        print(f"type info: {type_info}")
-        type = server.expr_type(type_info)
-    except Exception as e:  # TODO refine exception type
-        error_str = str(e)
-        # Error: unknown universe level '`u'. The [1:] is to drop the backtick.
-        print(f"universe level error: {error_str}")
-        # Example: unknown universe level '`u_1'
-        # ["unknown universe level ", "`u_1", ""]
-        universe_level = error_str.split("'")[1][1:]
-        # probably an inductive, missing universe levels
-        try:
-            print(f"Trying again with universe level {universe_level} and type {type_info}")
-            type = server.run(
-                "expr.echo", {"expr": type_info, "levels": [universe_level]}
-            )
-            print(f"Success! Type is {type}")
-            # type = type["type"]
-        except Exception as e:
-            print(f"Error 2: {e}")
-            raise e
-
-    if type == "Prop":
-        return "proof"
-    else:
-        return "code"
-
-
 def module_to_file_path(module_path: str, project_root: Path) -> Path:
     """Convert a module path to a file path
 
@@ -273,8 +234,6 @@ def atomize_project(
         source = extract_source_code(line_col_info, file_path)
         type_deps = list(set(info.get("typeDependency", [])))
         value_deps = list(set(info.get("valueDependency", [])))
-        # Still need this call to `server` since it uses `expr_type`.
-        kind = extract_kind(symbol, server, inspect_cache)
 
         atom = AtomizedDef(
             name=symbol,
@@ -283,7 +242,7 @@ def atomize_project(
             source_code=source,
             type_dependencies=set(type_deps),
             value_dependencies=set(value_deps),
-            kind=kind,
+            kind="proof",
             file_path=str(file_path),
             line_col_info=line_col_info,
         )
