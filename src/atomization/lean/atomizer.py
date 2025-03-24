@@ -148,11 +148,14 @@ def extract_kind(
         )["type"]["pp"]
 
     try:
+        print(f"type info: {type_info}")
         type = server.expr_type(type_info)
     except Exception as e:  # TODO refine exception type
         error_str = str(e)
         # Error: unknown universe level '`u'. The [1:] is to drop the backtick.
         print(f"universe level error: {error_str}")
+        # Example: unknown universe level '`u_1'
+        # ["unknown universe level ", "`u_1", ""]
         universe_level = error_str.split("'")[1][1:]
         # probably an inductive, missing universe levels
         try:
