@@ -152,6 +152,7 @@ def extract_kind(
     except Exception as e:  # TODO refine exception type
         error_str = str(e)
         # Error: unknown universe level '`u'. The [1:] is to drop the backtick.
+        print(f"universe level error: {error_str}")
         universe_level = error_str.split("'")[1][1:]
         # probably an inductive, missing universe levels
         try:
