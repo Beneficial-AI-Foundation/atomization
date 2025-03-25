@@ -528,16 +528,6 @@ def build_lean_project(project_root: Path) -> None:
         bufsize=1,  # Line buffered
         universal_newlines=True
     )
-    print("Running lake exe cache get...")
-    build_process = subprocess.Popen(
-        ["lake", "exe", "cache", "get"],
-        cwd=project_root,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        universal_newlines=True
-    )
 
     # Stream output from lake build
     print("Running lake build...")
