@@ -468,7 +468,7 @@ def delete_code_atoms(code_id: int) -> bool:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
             # Delete dependencies first to avoid foreign key conflicts
-            cursor.execute("DELETE FROM atomsdependencies WHERE atom_id IN (SELECT id FROM atoms WHERE code_id = %s)", (code_id,))
+            cursor.execute("DELETE FROM atomsdependencies WHERE parentatom_id = %s OR childatom_id = %s", (code_id, code_id))
             cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
             conn.commit()
             logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
