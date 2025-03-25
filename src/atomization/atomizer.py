@@ -309,6 +309,10 @@ def parse_cli_arguments(
     delete_parser = subparsers.add_parser("delete", help="Delete a package and cleanup")
     delete_parser.add_argument("package_id", type=int, help="Package ID to delete")
 
+    # NEW: Delete-atoms command
+    delete_atoms_parser = subparsers.add_parser("delete-atoms", help="Delete atoms for a given code_id")
+    delete_atoms_parser.add_argument("code_id", type=int, help="Code ID for which to delete atoms")
+
     # Atomize command
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
     atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
