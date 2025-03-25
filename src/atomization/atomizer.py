@@ -535,6 +535,18 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
                 else:
                     logger.error(f"Failed to save Isabelle atoms for code {code_id}")
                     return 1
+            snippet_chunks = []
+            atoms = parsed_chunks["Atoms"]
+            for atom in atoms:
+                print(f"Atom: {atom}")
+                snippet_chunks.append(
+                    {
+                        "content": atom["body"],
+                        "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                        "type": atom["type"],
+                    }
+                )
+            parsed_chunks = snippet_chunks
         else:
             print("Language not supported yet")
             return 1
