@@ -542,12 +542,11 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             snippet_chunks = []
             atoms = parsed_chunks["Atoms"]
             for atom in atoms:
-                print(f"Atom: {atom}")
                 snippet_chunks.append(
                     {
                         "content": atom["body"],
                         "order": len(snippet_chunks) + 1,  # Simple sequential ordering
-                        "type": atom["type"],
+                        "type": atom["statement_type"],
                     }
                 )
             parsed_chunks = snippet_chunks
