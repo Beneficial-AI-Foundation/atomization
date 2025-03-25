@@ -348,8 +348,10 @@ def execute_delete_command(package_id: int) -> int:
 def execute_atom_delete_command(code_id: int) -> int:
     """Execute the delete command by handling related DB cleanup."""
     print(f"Deleting atoms for code {code_id}")
-    if delete_code_atoms(code_id):
-        logger.info(f"Successfully deleted atoms and atomsdependencies for code {code_id}")
+    (success, deletion_occurred) = delete_code_atoms(code_id)
+    if success:
+        if deletion_occurred:
+            logger.info(f"Successfully deleted atoms and atomsdependencies for code {code_id}")
         return 0
     return 1
 
@@ -454,7 +456,7 @@ def save_atoms_to_db(parsed_chunks, code_id):
         return False
 
 
-def delete_code_atoms(code_id: int) -> bool:
+def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
     """
     Delete all entries from the 'atomsdependencies' and 'atoms' tables for a given code_id.
 
@@ -462,20 +464,38 @@ def delete_code_atoms(code_id: int) -> bool:
         code_id (int): The ID of the code whose atoms and dependencies are to be deleted.
 
     Returns:
-        True if deletion was successful, False otherwise.
+        A tuple (success, deletion_occurred) where:
+          - success (bool): True if the operation executed without errors, False otherwise.
+          - deletion_occurred (bool): True if atoms were found and deleted, False if no atoms existed.
     """
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
-            # Delete dependencies first to avoid foreign key conflicts
-            cursor.execute("DELETE FROM atomsdependencies WHERE parentatom_id = %s OR childatom_id = %s", (code_id, code_id))
-            cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
-            conn.commit()
-            logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
-            return True
+            
+            # Check if any atoms exist for the given code_id
+            cursor.execute("SELECT 1 FROM atoms WHERE code_id = %s", (code_id,))
+            if cursor.fetchone() is None:
+                logger.info(f"No atoms found for code_id {code_id}; nothing to delete.")
+                return (True, False)
+            else:
+                # Retrieve all atom ids for the given code_id
+                cursor.execute("SELECT id FROM atoms WHERE code_id = %s", (code_id,))
+                atom_ids = [row["id"] for row in cursor.fetchall()]
+                if atom_ids:
+                    # Delete dependencies for these atom ids to avoid foreign key conflicts
+                    format_ids = ','.join(['%s'] * len(atom_ids))
+                    query = (
+                        f"DELETE FROM atomsdependencies WHERE "
+                        f"parentatom_id IN ({format_ids}) OR childatom_id IN ({format_ids})"
+                    )
+                    cursor.execute(query, tuple(atom_ids + atom_ids))
+                cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
+                conn.commit()
+                logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
+                return (True, True)
     except MysqlConnectorError as e:
         logger.error(f"Database error while deleting all atoms for code_id {code_id}: {e}")
-        return False
+        return (False, False)
 
 
 def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> int:
