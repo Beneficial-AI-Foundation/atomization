@@ -317,18 +317,6 @@ def parse_cli_arguments(
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
     atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
 
-    # Visualize command
-    visualize_parser = subparsers.add_parser(
-        "visualize", help="Visualize Lean code and generate dependency graphs"
-    )
-    visualize_parser.add_argument("file_path", type=str, help="Path to Lean file")
-    visualize_parser.add_argument(
-        "--output-dir",
-        type=str,
-        help="Output directory for visualization files",
-        default=None,
-    )
-
     return parser.parse_args(args), parser
 
 
@@ -473,14 +461,17 @@ def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
             cursor = conn.cursor(dictionary=True)
             
             # Check if any atoms exist for the given code_id
-            cursor.execute("SELECT 1 FROM atoms WHERE code_id = %s", (code_id,))
-            if cursor.fetchone() is None:
+            cursor.execute("SELECT 1 FROM atoms WHERE code_id = %s LIMIT 1", (code_id,))
+            result = cursor.fetchone()
+            
+            if result is None:
                 logger.info(f"No atoms found for code_id {code_id}; nothing to delete.")
                 return (True, False)
             else:
                 # Retrieve all atom ids for the given code_id
                 cursor.execute("SELECT id FROM atoms WHERE code_id = %s", (code_id,))
                 atom_ids = [row["id"] for row in cursor.fetchall()]
+                
                 if atom_ids:
                     # Delete dependencies for these atom ids to avoid foreign key conflicts
                     format_ids = ','.join(['%s'] * len(atom_ids))
@@ -489,6 +480,8 @@ def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
                         f"parentatom_id IN ({format_ids}) OR childatom_id IN ({format_ids})"
                     )
                     cursor.execute(query, tuple(atom_ids + atom_ids))
+                    
+                # Delete the atoms themselves
                 cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
                 conn.commit()
                 logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
