@@ -344,7 +344,7 @@ def execute_atom_delete_command(code_id: int) -> int:
     return 1
 
 
-def save_atoms_to_db(parsed_chunks, code_id):
+def save_atoms_to_db(parsed_chunks, code_id) -> bool:
     """
     Save atomized code chunks to the database (atoms and atomsdependencies tables).
     Handles both Lean format (deps as full atoms) and Isabelle format (deps as identifiers).
@@ -363,7 +363,8 @@ def save_atoms_to_db(parsed_chunks, code_id):
                 row.get("identifier"): row.get("id") for row in cursor.fetchall()
             }
             if existing_atoms:
-                raise ValueError(f"Atoms already exist for code ID {code_id}")
+                logger.info(f"Atoms already exist for code ID {code_id}")
+                return False
 
             # No existing atoms, so proceed to insert new atoms
             atom_id_map = {}
@@ -594,7 +595,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
 
     except ValueError as e:
         parser.error(
-            f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`"
+            f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, `delete-atoms <code_id>, or `atomize <code_id>`"
         )
 
 
