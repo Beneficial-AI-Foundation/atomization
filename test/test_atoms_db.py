@@ -1,5 +1,5 @@
 import pytest
-from atomization.atomizer import save_atoms_to_db
+from atomization.atomizer import execute_atomize_command, save_atoms_to_db
 from mysql.connector import Error as MysqlConnectorError
 
 # Add pytest-mock fixture
@@ -175,11 +175,12 @@ def test_batch_dependency_insertion(mock_db_connection, isabelle_atoms):
     assert "INSERT INTO atomsdependencies" in executemany_calls[0][0][0]
 
 
-def test_raise_error_existing_atoms(mock_existing_atoms, isabelle_atoms):
-    """Test that attempting to save atoms for a code_id that already has atoms
-    raises a ValueError."""
+def test_existing_atoms(mock_existing_atoms, isabelle_atoms):
+    """Test that attempting to atomize for a code_id that already has atoms
+    returns 1."""
     code_id = 123
     # Simulate that an atom exists by returning a non-empty result in the initial query.
     mock_existing_atoms.fetchall.return_value = [{"identifier": "const_def", "id": 42}]
-    with pytest.raises(ValueError, match=f"Atoms already exist for code ID {code_id}"):
-        save_atoms_to_db(isabelle_atoms, code_id)
+    
+    result = execute_atomize_command(isabelle_atoms, code_id)
+    assert result == 1

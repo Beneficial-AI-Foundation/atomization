@@ -47,7 +47,7 @@ requires-dist = [
     { name = "coqpyt", git = "https://github.com/sr-lab/coqpyt" },
     { name = "dataclasses-json", specifier = ">=0.6.7" },
     { name = "mysql-connector-python", specifier = ">=9.1.0" },
-    { name = "pantograph", git = "https://github.com/lenianiva/PyPantograph" },
+    { name = "pantograph", git = "https://github.com/lenianiva/PyPantograph?branch=fixed%2Fv4.16.0-rc1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
@@ -344,7 +344,7 @@ wheels = [
 [[package]]
 name = "pantograph"
 version = "0.2.25"
-source = { git = "https://github.com/lenianiva/PyPantograph#2c19b0ede24496e715e1b4d067519e4edff49ff0" }
+source = { git = "https://github.com/lenianiva/PyPantograph?branch=fixed%2Fv4.16.0-rc1#6735ff306de4611303c37ecb8b62f67306353707" }
 dependencies = [
     { name = "pexpect" },
 ]

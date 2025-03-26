@@ -8,6 +8,7 @@
       flake = false;
     };
     fmt.url = "github:numtide/treefmt-nix";
+    pantograph.url = "github:lenianiva/Pantograph";
   };
   outputs =
     {
@@ -16,6 +17,7 @@
       parts,
       coqpyt,
       fmt,
+      pantograph,
     }@inputs:
     parts.lib.mkFlake { inherit inputs; } {
       systems = [

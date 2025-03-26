@@ -85,6 +85,24 @@ def test_connection() -> bool:
         logger.error(f"Database error: {e}")
         return False
 
+def get_code_atoms(code_id: int) -> bool:
+    # Check if there are already atoms for this code_id
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT identifier, id FROM atoms WHERE code_id = %s", (code_id,)
+            )
+            existing_atoms = {
+                row.get("identifier"): row.get("id") for row in cursor.fetchall()
+            }
+            if existing_atoms:
+                logger.info(f"Atoms already exist for code ID {code_id}")
+                return False
+            return True
+    except MysqlConnectorError as e:
+        logger.error(f"Database error: {e}")
+        return False
 
 def get_code_entry(code_id: int):
     try:
@@ -317,18 +335,6 @@ def parse_cli_arguments(
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
     atomize_parser.add_argument("code_id", type=int, help="Code ID to atomize")
 
-    # Visualize command
-    visualize_parser = subparsers.add_parser(
-        "visualize", help="Visualize Lean code and generate dependency graphs"
-    )
-    visualize_parser.add_argument("file_path", type=str, help="Path to Lean file")
-    visualize_parser.add_argument(
-        "--output-dir",
-        type=str,
-        help="Output directory for visualization files",
-        default=None,
-    )
-
     return parser.parse_args(args), parser
 
 
@@ -356,7 +362,7 @@ def execute_atom_delete_command(code_id: int) -> int:
     return 1
 
 
-def save_atoms_to_db(parsed_chunks, code_id):
+def save_atoms_to_db(parsed_chunks, code_id) -> bool:
     """
     Save atomized code chunks to the database (atoms and atomsdependencies tables).
     Handles both Lean format (deps as full atoms) and Isabelle format (deps as identifiers).
@@ -367,17 +373,6 @@ def save_atoms_to_db(parsed_chunks, code_id):
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
 
-            # Check if there are already atoms for this code_id
-            cursor.execute(
-                "SELECT identifier, id FROM atoms WHERE code_id = %s", (code_id,)
-            )
-            existing_atoms = {
-                row.get("identifier"): row.get("id") for row in cursor.fetchall()
-            }
-            if existing_atoms:
-                raise ValueError(f"Atoms already exist for code ID {code_id}")
-
-            # No existing atoms, so proceed to insert new atoms
             atom_id_map = {}
             atoms_to_process = (
                 parsed_chunks["Atoms"]
@@ -473,14 +468,17 @@ def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
             cursor = conn.cursor(dictionary=True)
             
             # Check if any atoms exist for the given code_id
-            cursor.execute("SELECT 1 FROM atoms WHERE code_id = %s", (code_id,))
-            if cursor.fetchone() is None:
+            cursor.execute("SELECT 1 FROM atoms WHERE code_id = %s LIMIT 1", (code_id,))
+            result = cursor.fetchone()
+            
+            if result is None:
                 logger.info(f"No atoms found for code_id {code_id}; nothing to delete.")
                 return (True, False)
             else:
                 # Retrieve all atom ids for the given code_id
                 cursor.execute("SELECT id FROM atoms WHERE code_id = %s", (code_id,))
                 atom_ids = [row["id"] for row in cursor.fetchall()]
+                
                 if atom_ids:
                     # Delete dependencies for these atom ids to avoid foreign key conflicts
                     format_ids = ','.join(['%s'] * len(atom_ids))
@@ -489,6 +487,8 @@ def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
                         f"parentatom_id IN ({format_ids}) OR childatom_id IN ({format_ids})"
                     )
                     cursor.execute(query, tuple(atom_ids + atom_ids))
+                    
+                # Delete the atoms themselves
                 cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
                 conn.commit()
                 logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
@@ -511,7 +511,10 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         if content is None:
             print(f"Package already exists: {existing_pkg}")
             return 1
-
+        ok_to_atomize = get_code_atoms(code_id)
+        if not ok_to_atomize:
+            logger.info(f"Skipping atomization for code {code_id} as atoms already exist")
+            return 1
         # CLI I/O: Decode the retrieved content
         decoded_content: str = content.decode("utf-8")
 
@@ -526,25 +529,27 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             parsed_chunks = atomize_lean(decoded_content, code_id)
 
             # Save Lean atoms to database (atoms and atomsdependencies tables)
-            if parsed_chunks:
+            if parsed_chunks != []:
                 if save_atoms_to_db(parsed_chunks, code_id):
                     logger.info(f"Successfully saved Lean atoms for code {code_id}")
                 else:
                     logger.error(f"Failed to save Lean atoms for code {code_id}")
                     return 1
 
-            # Convert Lean atoms to snippets format for consistency with other languages
-            # Note: This is a simplified conversion for display and snippet creation
-            snippet_chunks = []
-            for atom in parsed_chunks:
-                snippet_chunks.append(
-                    {
-                        "content": atom["body"],
-                        "order": len(snippet_chunks) + 1,  # Simple sequential ordering
-                        "type": atom["type"],
-                    }
-                )
-            parsed_chunks = snippet_chunks
+                # Convert Lean atoms to snippets format for consistency with other languages
+                # Note: This is a simplified conversion for display and snippet creation
+                snippet_chunks = []
+                for atom in parsed_chunks:
+                    snippet_chunks.append(
+                        {
+                            "content": atom["body"],
+                            "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                            "type": atom["type"],
+                        }
+                    )
+                parsed_chunks = snippet_chunks
+            else:
+                logger.info("No atoms processed in Lean code")
         elif code_language_id == LANG_MAP["coq"]:
             print(f"Atomizing Coq code with ID {code_id}")
             parsed_chunks = atomize_coq(decoded_content)
@@ -599,7 +604,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
 
     except ValueError as e:
         parser.error(
-            f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, or `atomize <code_id>`"
+            f"Invalid input: {e}. Please provide one of: `test`, `delete <package_id>`, `delete-atoms <code_id>, or `atomize <code_id>`"
         )
 
 
