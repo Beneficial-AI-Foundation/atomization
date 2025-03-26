@@ -13,6 +13,8 @@ import tqdm
 import dataclasses_json
 from pantograph.server import Server
 
+logger = logging.getLogger(__name__)
+
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 LOG_DIR = _PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -482,7 +484,7 @@ def set_toolchain(
         f.write(version)
 
 
-def create_dummy_lean_project(code: str, pkg_id: int) -> None:
+def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
     """Create a dummy Lean project in `/tmp/Pkg{pkg_id}`.
 
     `code`: all the code in one big file.
@@ -494,31 +496,37 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> None:
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
     
-    # First check if the directory already exists, and if not, create it
-    if not project_root.exists():
-        # `math` is to add a mathlib dependency conveniently.
-        # TODO: add back mathlib dependency
-        result = subprocess.run(
-            ["lake", "new", project_name],
-            cwd="/tmp",
-            capture_output=True,
-            text=True,
-        )
-        
-        if result.returncode != 0:
-            # If the lake command failed, raise an error with the output
-            raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
-            
-        print(f"Created Lean project at {project_root}")
-        print("Command output:", result.stdout)
+    # First check if code has any imports. If so, fail gracefully
+    if "import" in code:
+        logger.warning("Code has imports, which are not supported yet.")
+        return False
+    # Then check if the directory already exists, and if not, create it
     else:
-        print(f"Using existing Lean project at {project_root}")
-    with root_file.open("w") as f:
-        f.write(code)
-    # write a simple main file that removes the default `def hello := "world"` referenced from `root_file` since it's overwritten by `root_file.open`.
-    with main_file.open("w") as f:
-        f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
-    set_toolchain(project_root)
+        if not project_root.exists():
+            # `math` is to add a mathlib dependency conveniently.
+            # TODO: add back mathlib dependency
+            result = subprocess.run(
+                ["lake", "new", project_name],
+                cwd="/tmp",
+                capture_output=True,
+                text=True,
+            )
+            
+            if result.returncode != 0:
+                # If the lake command failed, raise an error with the output
+                raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
+                
+            print(f"Created Lean project at {project_root}")
+            print("Command output:", result.stdout)
+        else:
+            print(f"Using existing Lean project at {project_root}")
+        with root_file.open("w") as f:
+            f.write(code)
+        # write a simple main file that removes the default `def hello := "world"` referenced from `root_file` since it's overwritten by `root_file.open`.
+        with main_file.open("w") as f:
+            f.write(f"import {project_name}\n\ndef main : IO Unit := return ()")
+        set_toolchain(project_root)
+        return True
 
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
@@ -530,7 +538,9 @@ def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     project_name = f"Pkg{pkg_id}"
     project_root = Path(f"/tmp/{project_name}")
 
-    create_dummy_lean_project(code, pkg_id)
+    success = create_dummy_lean_project(code, pkg_id)
+    if not success:
+        return []
     build_lean_project(project_root)
     server = Server(imports=["Init", project_name], project_path=project_root)
 

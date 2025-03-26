@@ -526,25 +526,27 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             parsed_chunks = atomize_lean(decoded_content, code_id)
 
             # Save Lean atoms to database (atoms and atomsdependencies tables)
-            if parsed_chunks:
+            if parsed_chunks != []:
                 if save_atoms_to_db(parsed_chunks, code_id):
                     logger.info(f"Successfully saved Lean atoms for code {code_id}")
                 else:
                     logger.error(f"Failed to save Lean atoms for code {code_id}")
                     return 1
 
-            # Convert Lean atoms to snippets format for consistency with other languages
-            # Note: This is a simplified conversion for display and snippet creation
-            snippet_chunks = []
-            for atom in parsed_chunks:
-                snippet_chunks.append(
-                    {
-                        "content": atom["body"],
-                        "order": len(snippet_chunks) + 1,  # Simple sequential ordering
-                        "type": atom["type"],
-                    }
-                )
-            parsed_chunks = snippet_chunks
+                # Convert Lean atoms to snippets format for consistency with other languages
+                # Note: This is a simplified conversion for display and snippet creation
+                snippet_chunks = []
+                for atom in parsed_chunks:
+                    snippet_chunks.append(
+                        {
+                            "content": atom["body"],
+                            "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                            "type": atom["type"],
+                        }
+                    )
+                parsed_chunks = snippet_chunks
+            else:
+                logger.info("No atoms processed in Lean code")
         elif code_language_id == LANG_MAP["coq"]:
             print(f"Atomizing Coq code with ID {code_id}")
             parsed_chunks = atomize_coq(decoded_content)
