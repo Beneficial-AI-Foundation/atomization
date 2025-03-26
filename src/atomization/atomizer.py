@@ -85,6 +85,23 @@ def test_connection() -> bool:
         logger.error(f"Database error: {e}")
         return False
 
+def get_code_atoms(code_id: int):
+    # Check if there are already atoms for this code_id
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT identifier, id FROM atoms WHERE code_id = %s", (code_id,)
+            )
+            existing_atoms = {
+                row.get("identifier"): row.get("id") for row in cursor.fetchall()
+            }
+            if existing_atoms:
+                logger.info(f"Atoms already exist for code ID {code_id}")
+                return False
+    except MysqlConnectorError as e:
+        logger.error(f"Database error: {e}")
+        return False
 
 def get_code_entry(code_id: int):
     try:
@@ -355,18 +372,6 @@ def save_atoms_to_db(parsed_chunks, code_id) -> bool:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
 
-            # Check if there are already atoms for this code_id
-            cursor.execute(
-                "SELECT identifier, id FROM atoms WHERE code_id = %s", (code_id,)
-            )
-            existing_atoms = {
-                row.get("identifier"): row.get("id") for row in cursor.fetchall()
-            }
-            if existing_atoms:
-                logger.info(f"Atoms already exist for code ID {code_id}")
-                return False
-
-            # No existing atoms, so proceed to insert new atoms
             atom_id_map = {}
             atoms_to_process = (
                 parsed_chunks["Atoms"]
@@ -505,7 +510,10 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         if content is None:
             print(f"Package already exists: {existing_pkg}")
             return 1
-
+        existing_atoms = get_code_atoms(code_id)
+        if existing_atoms:
+            logger.info(f"Skipping atomization for code {code_id} as atoms already exist")
+            return 1
         # CLI I/O: Decode the retrieved content
         decoded_content: str = content.decode("utf-8")
 
