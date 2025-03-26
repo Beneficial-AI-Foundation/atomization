@@ -85,7 +85,7 @@ def test_connection() -> bool:
         logger.error(f"Database error: {e}")
         return False
 
-def get_code_atoms(code_id: int):
+def get_code_atoms(code_id: int) -> bool:
     # Check if there are already atoms for this code_id
     try:
         with DBConnection() as conn:
@@ -99,6 +99,7 @@ def get_code_atoms(code_id: int):
             if existing_atoms:
                 logger.info(f"Atoms already exist for code ID {code_id}")
                 return False
+            return True
     except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return False
@@ -510,8 +511,8 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         if content is None:
             print(f"Package already exists: {existing_pkg}")
             return 1
-        existing_atoms = get_code_atoms(code_id)
-        if existing_atoms:
+        ok_to_atomize = get_code_atoms(code_id)
+        if not ok_to_atomize:
             logger.info(f"Skipping atomization for code {code_id} as atoms already exist")
             return 1
         # CLI I/O: Decode the retrieved content
