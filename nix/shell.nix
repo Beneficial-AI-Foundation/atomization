@@ -13,10 +13,12 @@
         coqpyt-src = inputs.coqpyt;
       };
       lean = [ pkgs.elan ];
+      rust = [ pkgs.rustup ];
       buildInputs =
         coq
         ++ python
         ++ lean
+        ++ rust
         ++ [
           pkgs.nodejs_23
           pkgs.jq

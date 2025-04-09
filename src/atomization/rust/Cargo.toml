@@ -1,0 +1,20 @@
+[package]
+name = "rust-analyzer-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rustdoc-json = "0.9.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+syn = { version = "2.0", features = ["full", "visit", "parsing"] }
+petgraph = "0.6"
+quote = "1.0"
+prettyplease = "0.2.31"
+scip = "0.5.2" 
+prost = "0.13.5"
+protobuf = "4.31.0-beta1"
+
+[[bin]]
+name = "call_graph_with_syn_v2"
+path = "call_graph_with_syn_v2.rs"
