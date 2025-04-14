@@ -28,9 +28,13 @@ dependencies = [
     { name = "coqpyt" },
     { name = "dataclasses-json" },
     { name = "mysql-connector-python" },
-    { name = "pantograph" },
     { name = "python-dotenv" },
     { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+lean = [
+    { name = "pantograph" },
 ]
 
 [package.dev-dependencies]
@@ -47,7 +51,7 @@ requires-dist = [
     { name = "coqpyt", git = "https://github.com/sr-lab/coqpyt" },
     { name = "dataclasses-json", specifier = ">=0.6.7" },
     { name = "mysql-connector-python", specifier = ">=9.1.0" },
-    { name = "pantograph", git = "https://github.com/lenianiva/PyPantograph?branch=fixed%2Fv4.16.0-rc1" },
+    { name = "pantograph", marker = "extra == 'lean'", git = "https://github.com/lenianiva/PyPantograph" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
@@ -343,8 +347,8 @@ wheels = [
 
 [[package]]
 name = "pantograph"
-version = "0.2.25"
-source = { git = "https://github.com/lenianiva/PyPantograph?branch=fixed%2Fv4.16.0-rc1#6735ff306de4611303c37ecb8b62f67306353707" }
+version = "0.3.0"
+source = { git = "https://github.com/lenianiva/PyPantograph#864791bd70ad8ae9297234d07e7962d198c0ba77" }
 dependencies = [
     { name = "pexpect" },
 ]

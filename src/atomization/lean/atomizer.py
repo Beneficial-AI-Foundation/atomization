@@ -11,7 +11,16 @@ import logging
 
 import tqdm
 import dataclasses_json
-from pantograph.server import Server
+
+# Try to import pantograph, but don't fail if it's not available
+try:
+    from pantograph.server import Server
+    PANTOGRAPH_AVAILABLE = True
+except ImportError:
+    PANTOGRAPH_AVAILABLE = False
+    # Define a dummy Server class to avoid type errors
+    class Server:
+        pass
 
 logger = logging.getLogger(__name__)
 
@@ -535,6 +544,12 @@ def build_lean_project(project_root: Path) -> None:
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
+    if not PANTOGRAPH_AVAILABLE:
+        logger.warning("Pantograph is not available. Lean atomization is disabled.")
+        logger.warning("To enable Lean atomization, install the optional 'lean' dependencies:")
+        logger.warning("  pip install atomization[lean]")
+        return []
+        
     project_name = f"Pkg{pkg_id}"
     project_root = Path(f"/tmp/{project_name}")
 
