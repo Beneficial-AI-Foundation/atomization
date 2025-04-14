@@ -581,7 +581,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
 
         # Business Logic: Format and display the atomized result
         result = jsonify_vlib(parsed_chunks)
-        pprint(result)
+        pprint("Result from jsonify_vlib: ", result)
 
         if code_language_id == LANG_MAP["dafny"]:
             # DB Operation: Create package and snippet records
