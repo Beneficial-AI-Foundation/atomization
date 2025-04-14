@@ -26,12 +26,20 @@ test = "pytest:main"
 dev = ["pytest>=8.3.4", "pytest-mock>=3.10.0", "ruff>=0.9.1", "ipykernel>=6.29.5"]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=42", "wheel", "setuptools_rust>=0.11.4"]
+build-backend = "setuptools.build_meta"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/atomization"]
 
+[tool.setuptools_rust]
+rust-extensions = [
+  { path = "rust_components/call_graph_with_syn", binding = "bin" }
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["atomization"]
 
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
