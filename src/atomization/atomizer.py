@@ -13,6 +13,7 @@ from atomization.lean.atomizer import atomize_lean
 from pathlib import Path
 from atomization.coq.atomizer import CoqAtomizer
 from atomization.isabelle.atomizer import atomize_isa
+from atomization.c.atomizer import atomize_str as atomize_c
 
 
 load_dotenv()
@@ -31,6 +32,7 @@ LANG_MAP: bidict[str, int] = bidict(
         "coq": 3,
         "isabelle": 4,
         "metamath": 5,
+        "c": 6,
     }
 )
 
@@ -579,6 +581,28 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
                     logger.info(f"Successfully saved Isabelle atoms for code {code_id}")
                 else:
                     logger.error(f"Failed to save Isabelle atoms for code {code_id}")
+                    return 1
+            snippet_chunks = []
+            atoms = parsed_chunks["Atoms"]
+            for atom in atoms:
+                snippet_chunks.append(
+                    {
+                        "content": atom["body"],
+                        "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                        "type": atom["statement_type"],
+                    }
+                )
+            parsed_chunks = snippet_chunks
+        elif code_language_id == LANG_MAP["c"]:
+            print(f"Atomizing C code with ID {code_id}")
+            parsed_chunks = atomize_c(decoded_content)
+
+            # Save C atoms to database (atoms and atomsdependencies tables)
+            if parsed_chunks:
+                if save_atoms_to_db(parsed_chunks, code_id):
+                    logger.info(f"Successfully saved C atoms for code {code_id}")
+                else:
+                    logger.error(f"Failed to save C atoms for code {code_id}")
                     return 1
             snippet_chunks = []
             atoms = parsed_chunks["Atoms"]
