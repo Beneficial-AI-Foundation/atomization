@@ -83,10 +83,10 @@ class CAtomizer:
         """Read a response from clangd with timeout"""
         if not self.clangd_process:
             raise RuntimeError("clangd process not started")
-        
+
         print("Waiting for response...", file=sys.stderr)
         start_time = time.time()
-        
+
         while True:
             # Check for timeout
             if time.time() - start_time > timeout:
@@ -101,7 +101,7 @@ class CAtomizer:
                 raise RuntimeError(
                     f"Timeout waiting for response after {timeout} seconds"
                 )
-            
+
             # Check if process is still running
             if self.clangd_process.poll() is not None:
                 print(
@@ -112,12 +112,12 @@ class CAtomizer:
                 if stderr_output:
                     print(stderr_output, file=sys.stderr)
                 raise RuntimeError("clangd process ended unexpectedly")
-            
+
             # Check for stderr output
             stderr_line = self.clangd_process.stderr.readline()
             if stderr_line:
                 print(f"clangd stderr: {stderr_line.strip()}", file=sys.stderr)
-            
+
             # Check for stdout output - first read the Content-Length header
             header = self.clangd_process.stdout.readline()
             if header:
@@ -129,7 +129,10 @@ class CAtomizer:
                         self.clangd_process.stdout.readline()
                         # Read the message
                         message = self.clangd_process.stdout.read(content_length)
-                        print(f"Received message: {message.decode('utf-8')}", file=sys.stderr)
+                        print(
+                            f"Received message: {message.decode('utf-8')}",
+                            file=sys.stderr,
+                        )
                         try:
                             response = json.loads(message)
                             if "id" in response:  # This is a response to our request
@@ -145,9 +148,11 @@ class CAtomizer:
                             )
                             continue
                     except (ValueError, IndexError):
-                        print(f"Failed to parse Content-Length: {header}", file=sys.stderr)
+                        print(
+                            f"Failed to parse Content-Length: {header}", file=sys.stderr
+                        )
                         continue
-            
+
             # Small sleep to prevent busy waiting
             time.sleep(0.1)
 
@@ -171,7 +176,32 @@ class CAtomizer:
                             "documentSymbol": {
                                 "symbolKind": {
                                     "valueSet": [
-                                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                                        1,
+                                        2,
+                                        3,
+                                        4,
+                                        5,
+                                        6,
+                                        7,
+                                        8,
+                                        9,
+                                        10,
+                                        11,
+                                        12,
+                                        13,
+                                        14,
+                                        15,
+                                        16,
+                                        17,
+                                        18,
+                                        19,
+                                        20,
+                                        21,
+                                        22,
+                                        23,
+                                        24,
+                                        25,
+                                        26,
                                     ]
                                 }
                             }
