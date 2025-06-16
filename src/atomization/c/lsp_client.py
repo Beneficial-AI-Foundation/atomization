@@ -83,10 +83,10 @@ class CAtomizer:
         """Read a response from clangd with timeout"""
         if not self.clangd_process:
             raise RuntimeError("clangd process not started")
-
+        
         print("Waiting for response...", file=sys.stderr)
         start_time = time.time()
-
+        
         while True:
             # Check for timeout
             if time.time() - start_time > timeout:
@@ -101,7 +101,7 @@ class CAtomizer:
                 raise RuntimeError(
                     f"Timeout waiting for response after {timeout} seconds"
                 )
-
+            
             # Check if process is still running
             if self.clangd_process.poll() is not None:
                 print(
@@ -112,30 +112,42 @@ class CAtomizer:
                 if stderr_output:
                     print(stderr_output, file=sys.stderr)
                 raise RuntimeError("clangd process ended unexpectedly")
-
+            
             # Check for stderr output
             stderr_line = self.clangd_process.stderr.readline()
             if stderr_line:
                 print(f"clangd stderr: {stderr_line.strip()}", file=sys.stderr)
-
-            # Check for stdout output
-            stdout_line = self.clangd_process.stdout.readline()
-            if stdout_line:
-                print(f"Received line: {stdout_line.strip()}", file=sys.stderr)
-                try:
-                    response = json.loads(stdout_line)
-                    if "id" in response:  # This is a response to our request
-                        print(
-                            f"Got response: {json.dumps(response, indent=2)}",
-                            file=sys.stderr,
-                        )
-                        return response
-                except json.JSONDecodeError:
-                    print(
-                        f"Failed to parse JSON: {stdout_line.strip()}", file=sys.stderr
-                    )
-                    continue
-
+            
+            # Check for stdout output - first read the Content-Length header
+            header = self.clangd_process.stdout.readline()
+            if header:
+                print(f"Received header: {header.strip()}", file=sys.stderr)
+                if header.startswith("Content-Length: "):
+                    try:
+                        content_length = int(header.split(": ")[1])
+                        # Read the empty line after the header
+                        self.clangd_process.stdout.readline()
+                        # Read the message
+                        message = self.clangd_process.stdout.read(content_length)
+                        print(f"Received message: {message.decode('utf-8')}", file=sys.stderr)
+                        try:
+                            response = json.loads(message)
+                            if "id" in response:  # This is a response to our request
+                                print(
+                                    f"Got response: {json.dumps(response, indent=2)}",
+                                    file=sys.stderr,
+                                )
+                                return response
+                        except json.JSONDecodeError:
+                            print(
+                                f"Failed to parse JSON: {message.decode('utf-8')}",
+                                file=sys.stderr,
+                            )
+                            continue
+                    except (ValueError, IndexError):
+                        print(f"Failed to parse Content-Length: {header}", file=sys.stderr)
+                        continue
+            
             # Small sleep to prevent busy waiting
             time.sleep(0.1)
 
@@ -159,32 +171,7 @@ class CAtomizer:
                             "documentSymbol": {
                                 "symbolKind": {
                                     "valueSet": [
-                                        1,
-                                        2,
-                                        3,
-                                        4,
-                                        5,
-                                        6,
-                                        7,
-                                        8,
-                                        9,
-                                        10,
-                                        11,
-                                        12,
-                                        13,
-                                        14,
-                                        15,
-                                        16,
-                                        17,
-                                        18,
-                                        19,
-                                        20,
-                                        21,
-                                        22,
-                                        23,
-                                        24,
-                                        25,
-                                        26,
+                                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
                                     ]
                                 }
                             }
@@ -201,13 +188,6 @@ class CAtomizer:
             message = json.dumps(init_request)
             content_length = len(message.encode("utf-8"))
             header = f"Content-Length: {content_length}\r\n\r\n"
-
-            print(f"Sending header: {header.strip()}", file=sys.stderr)
-            print(f"Sending message: {message}", file=sys.stderr)
-
-            # Send header and message
-            if self.clangd_process.stdin is None:
-                raise RuntimeError("clangd process stdin is None")
 
             # Send as bytes to ensure proper encoding
             header_bytes = header.encode("utf-8")

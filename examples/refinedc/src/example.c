@@ -10,9 +10,9 @@ unsigned int add4(unsigned int x, unsigned int y, unsigned int z,
   return r + s;
 }
 
-unsigned int add5(unsigned int x, unsigned int y, unsigned int z,
+unsigned int add5_depd(unsigned int x, unsigned int y, unsigned int z,
                   unsigned int w, unsigned int v) {
-  unsigned int r = x + y;
-  unsigned int s = z + w;
-  return r + s + v;
+  unsigned int r = add3(x, y, z);
+  unsigned int s = add3(w, v, r);
+  return s;
 }
