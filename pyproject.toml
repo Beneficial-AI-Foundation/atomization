@@ -27,6 +27,7 @@ dev = [
     "ruff>=0.9.1",
     "ipykernel>=6.29.5",
     "typer>=0.16.0",
+    "pyright>=1.1.402",
 ]
 
 [build-system]
