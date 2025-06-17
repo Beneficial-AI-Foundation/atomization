@@ -2,15 +2,16 @@ import logging
 import os
 import sys
 import argparse
+from pathlib import Path
 from pprint import pprint
+from dotenv import load_dotenv
 from mysql import connector
 from mysql.connector import Error as MysqlConnectorError
-from dotenv import load_dotenv
+from bidict import bidict
+import typer
 from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
-from bidict import bidict
 from atomization.lean.atomizer import atomize_lean
-from pathlib import Path
 from atomization.coq.atomizer import CoqAtomizer
 from atomization.isabelle.atomizer import atomize_isa
 
@@ -85,6 +86,7 @@ def test_connection() -> bool:
         logger.error(f"Database error: {e}")
         return False
 
+
 def get_code_atoms(code_id: int) -> bool:
     # Check if there are already atoms for this code_id
     try:
@@ -103,6 +105,7 @@ def get_code_atoms(code_id: int) -> bool:
     except MysqlConnectorError as e:
         logger.error(f"Database error: {e}")
         return False
+
 
 def get_code_entry(code_id: int):
     try:
@@ -328,8 +331,12 @@ def parse_cli_arguments(
     delete_parser.add_argument("package_id", type=int, help="Package ID to delete")
 
     # NEW: Delete-atoms command
-    delete_atoms_parser = subparsers.add_parser("delete-atoms", help="Delete atoms for a given code_id")
-    delete_atoms_parser.add_argument("code_id", type=int, help="Code ID for which to delete atoms")
+    delete_atoms_parser = subparsers.add_parser(
+        "delete-atoms", help="Delete atoms for a given code_id"
+    )
+    delete_atoms_parser.add_argument(
+        "code_id", type=int, help="Code ID for which to delete atoms"
+    )
 
     # Atomize command
     atomize_parser = subparsers.add_parser("atomize", help="Atomize code with given ID")
@@ -351,13 +358,16 @@ def execute_delete_command(package_id: int) -> int:
         return 0
     return 1
 
+
 def execute_atom_delete_command(code_id: int) -> int:
     """Execute the delete command by handling related DB cleanup."""
     print(f"Deleting atoms for code {code_id}")
     (success, deletion_occurred) = delete_code_atoms(code_id)
     if success:
         if deletion_occurred:
-            logger.info(f"Successfully deleted atoms and atomsdependencies for code {code_id}")
+            logger.info(
+                f"Successfully deleted atoms and atomsdependencies for code {code_id}"
+            )
         return 0
     return 1
 
@@ -466,11 +476,11 @@ def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
     try:
         with DBConnection() as conn:
             cursor = conn.cursor(dictionary=True)
-            
+
             # Check if any atoms exist for the given code_id
             cursor.execute("SELECT 1 FROM atoms WHERE code_id = %s LIMIT 1", (code_id,))
             result = cursor.fetchone()
-            
+
             if result is None:
                 logger.info(f"No atoms found for code_id {code_id}; nothing to delete.")
                 return (True, False)
@@ -478,23 +488,27 @@ def delete_code_atoms(code_id: int) -> tuple[bool, bool]:
                 # Retrieve all atom ids for the given code_id
                 cursor.execute("SELECT id FROM atoms WHERE code_id = %s", (code_id,))
                 atom_ids = [row["id"] for row in cursor.fetchall()]
-                
+
                 if atom_ids:
                     # Delete dependencies for these atom ids to avoid foreign key conflicts
-                    format_ids = ','.join(['%s'] * len(atom_ids))
+                    format_ids = ",".join(["%s"] * len(atom_ids))
                     query = (
                         f"DELETE FROM atomsdependencies WHERE "
                         f"parentatom_id IN ({format_ids}) OR childatom_id IN ({format_ids})"
                     )
                     cursor.execute(query, tuple(atom_ids + atom_ids))
-                    
+
                 # Delete the atoms themselves
                 cursor.execute("DELETE FROM atoms WHERE code_id = %s", (code_id,))
                 conn.commit()
-                logger.info(f"Successfully deleted all atoms and their dependencies for code_id {code_id}")
+                logger.info(
+                    f"Successfully deleted all atoms and their dependencies for code_id {code_id}"
+                )
                 return (True, True)
     except MysqlConnectorError as e:
-        logger.error(f"Database error while deleting all atoms for code_id {code_id}: {e}")
+        logger.error(
+            f"Database error while deleting all atoms for code_id {code_id}: {e}"
+        )
         return (False, False)
 
 
@@ -513,7 +527,9 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
             return 1
         ok_to_atomize = get_code_atoms(code_id)
         if not ok_to_atomize:
-            logger.info(f"Skipping atomization for code {code_id} as atoms already exist")
+            logger.info(
+                f"Skipping atomization for code {code_id} as atoms already exist"
+            )
             return 1
         # CLI I/O: Decode the retrieved content
         decoded_content: str = content.decode("utf-8")
@@ -543,7 +559,8 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
                     snippet_chunks.append(
                         {
                             "content": atom["body"],
-                            "order": len(snippet_chunks) + 1,  # Simple sequential ordering
+                            "order": len(snippet_chunks)
+                            + 1,  # Simple sequential ordering
                             "type": atom["type"],
                         }
                     )
@@ -630,7 +647,7 @@ def main() -> None:
     sys.exit(exit_code)
 
 
-def dry_run() -> None:
+def dry_coq() -> None:
     """Dry run the atomizer on a given Coq file."""
 
     def parser() -> argparse.ArgumentParser:
@@ -644,6 +661,21 @@ def dry_run() -> None:
     atomizer = CoqAtomizer(file)
     json_content = atomizer.jsonify_vlib()
     print(json_content)
+
+
+def dry() -> None:
+    """Dry run the atomizer on a given Coq file."""
+
+    cli = typer.Typer()
+
+    @cli.command()
+    def rocq(filepath: Path) -> None:
+        print(f"hi {filepath}")
+        atomizer = CoqAtomizer(filepath)
+        json_content = atomizer.jsonify_vlib()
+        print(json_content)
+
+    cli()
 
 
 if __name__ == "__main__":
