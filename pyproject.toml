@@ -20,7 +20,13 @@ dry = "atomization.atomizer:dry_run"
 test = "pytest:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3.4", "pytest-mock>=3.10.0", "ruff>=0.9.1", "ipykernel>=6.29.5"]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-mock>=3.10.0",
+    "ruff>=0.9.1",
+    "ipykernel>=6.29.5",
+    "typer>=0.16.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -32,7 +38,7 @@ packages = ["src/atomization"]
 
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
-pantograph = { git = "https://github.com/lenianiva/PyPantograph", branch = "fixed/v4.16.0-rc1" }
+pantograph = { git = "https://github.com/stanford-centaur/PyPantograph" }
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
