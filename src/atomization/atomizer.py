@@ -11,7 +11,6 @@ from bidict import bidict
 import typer
 from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
-from atomization.lean.atomizer import atomize_lean
 from atomization.coq.atomizer import CoqAtomizer
 from atomization.isabelle.atomizer import atomize_isa
 
