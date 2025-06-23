@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Any, Callable
 
 
 class JsonRpcTransport:

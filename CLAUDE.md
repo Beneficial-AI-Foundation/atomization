@@ -12,7 +12,6 @@ uv sync
 ```
 
 This provides access to:
-
 - Python 3.12+ with uv package manager
 - Coq with coq-lsp and dune
 - Lean 4 (via elan)
@@ -23,121 +22,122 @@ This provides access to:
 ## Common Commands
 
 ### Testing
-
 ```bash
-uv run test                    # Run the full test suite
+uv run pytest                    # Run local tests (excludes networked tests)
+PYTEST_ADDOPTS="" uv run pytest  # Run all tests including networked (on server)
 uv run pytest test/specific_test.py  # Run specific test file
+uv run pytest test/test_dafny_lsp.py -v  # Run with verbose output
 ```
 
 ### Linting and Formatting
-
 ```bash
-uv run ruff check             # Lint code
-uv run ruff format            # Format code
-uv run pyright               # Type checking
+uv run ruff check --fix          # Lint and auto-fix code
+uv run ruff format               # Format code
+uv run pyright                   # Type checking
 ```
 
 ### Running the Atomizer
-
 ```bash
-uv run main <code_id>         # Atomize code with given database ID
-uv run main test              # Test database connection
-uv run main delete <package_id>  # Delete package and cleanup
-uv run main delete-atoms <code_id>  # Delete atoms for code
+uv run atomize <code_id>         # Atomize code with given database ID
+uv run atomize test              # Test database connection
+uv run atomize delete <package_id>  # Delete package and cleanup
+```
+
+### Dry Run Examples (No Database)
+```bash
+uv run dry dafny examples/dafny/sum.dfy      # Test Dafny LSP atomization
+uv run dry rocq examples/coq/example.v      # Test Coq atomization
+uv run dry_coq <filename>                   # Dry run Coq atomizer on examples/coq/<filename>.v
 ```
 
 ### Docker Usage (Production)
-
 ```bash
 docker-compose run --remove-orphans atomization test
 docker-compose run atomization <code_id>
 docker-compose run atomization delete <package_id>
 ```
 
-### Dry Run Examples
-
-```bash
-uv run dry_coq <filename>     # Dry run Coq atomizer on examples/coq/<filename>.v
-uv run dry rocq <filepath>    # Dry run Coq atomizer on arbitrary file
-```
-
 ## Architecture
 
-### Core Components
+### Async LSP Architecture
 
-The atomizer supports multiple formal verification languages:
+The system is built around async Language Server Protocol (LSP) clients for real-time code analysis:
 
-1. **Dafny Atomizer** (`src/atomization/dafny/`): Breaks Dafny code into spec, code, and proof atoms
-2. **Coq Atomizer** (`src/atomization/coq/`): Processes Coq/Rocq files using coqpyt
-3. **Lean Atomizer** (`src/atomization/lean/`): Handles Lean 4 code via PyPantograph
-4. **Isabelle Atomizer** (`src/atomization/isabelle/`): Processes Isabelle/HOL theories with Scala backend
+**Core LSP Framework** (`src/atomization/common/lsp/`):
+- `JsonRpcTransport`: Async JSON-RPC transport using `asyncio` subprocess communication
+- `AtomizerPlugin`: Abstract base class defining async LSP interface
+- All LSP operations use `async/await` patterns instead of blocking calls
 
-### LSP Integration
+**Key LSP Methods**:
+- `async def initialize()`: Setup LSP server capabilities
+- `async def open_file()`: Notify server about file changes
+- `async def request_all_symbols()`: Extract symbols via `workspace/symbol`
+- `async def build_dependency_graph()`: Analyze symbol dependencies
 
-The system includes Language Server Protocol (LSP) clients for enhanced code analysis:
+### Dafny LSP Implementation
 
-**Common LSP Framework** (`src/atomization/common/lsp/`):
+**DafnyAtomizer** (`src/atomization/dafny/lsp_client.py`):
+- Captures Classes (kind 5), Methods (kind 6), and Functions (kind 12)
+- Performs dependency analysis by parsing symbol references in code
+- Extracts full symbol definitions including specifications and proofs
+- Outputs JSON format: `{"data": {"symbol_name": [["dependencies"], "source_code"]}}`
 
-- `JsonRpcTransport`: JSON-RPC transport layer over subprocess communication
-- `AtomizerPlugin`: Abstract base class for language-specific LSP clients
+**Two-tier Architecture**:
+- `atomize_dafny_async()`: Core async implementation returning symbols + dependencies
+- `atomize_dafny()`: Synchronous wrapper for backward compatibility
+- `atomize_dafny_with_deps()`: Returns both symbols and dependency graph
 
-**Dafny LSP Client** (`src/atomization/dafny/lsp_client.py`):
+### Multi-Language Support
 
-- `DafnyAtomizer`: Concrete implementation for Dafny LSP integration
-- Supports symbol discovery via `workspace/symbol` requests
-- Enables reference finding via `textDocument/references` requests
-- Handles file opening with `textDocument/didOpen` notifications
+1. **Dafny**: LSP-based with dependency analysis, creates snippets in database
+2. **Coq/Rocq**: Uses coqpyt library for parsing and analysis
+3. **Lean**: Uses PyPantograph (optional dependency), creates atoms in database
+4. **Isabelle**: Scala backend integration, creates atoms in database
 
-The LSP clients enable:
+### Database Schema
 
-- Symbol extraction from workspace
-- Reference tracking across files
-- Real-time code analysis through language servers
-- Enhanced dependency analysis for atomization
+**MySQL database (`verilib`) tables**:
+- `codes`: Source code entries with language metadata
+- `packages`: Atomized packages linking to original code
+- `snippets`: Code fragments (Dafny only)
+- `atoms`: Atomic program elements with dependencies (Lean, Isabelle)
+- `atomsdependencies`: Dependency relationships between atoms
 
-### Database Integration
+### Testing Architecture
 
-The system integrates with a MySQL database (`verilib`) containing:
+**Test Organization**:
+- `test/`: Local tests (run by default)
+- `test/networked/`: Database integration tests (require `PYTEST_ADDOPTS=""`)
+- Async tests use `@pytest.mark.asyncio` with proper fixtures
+- LSP tests include timing delays (`await asyncio.sleep()`) for server processing
 
-- `codes` table: Source code entries with language metadata
-- `packages` table: Atomized packages linking to original code
-- `snippets` table: Code fragments (for Dafny only currently)
-- `atoms` table: Atomic program elements with dependencies
-- `atomsdependencies` table: Dependency relationships between atoms
+## Important Implementation Details
 
-### Language Support Matrix
+### LSP Timing Considerations
+- LSP servers need processing time after `textDocument/didOpen` before `workspace/symbol` requests
+- Use `await asyncio.sleep(2-3)` delays in tests and atomization functions
+- This is due to server-side parsing, not async implementation issues
 
-| Language | Snippet Creation | Atom Creation | Database Tables          |
-| -------- | ---------------- | ------------- | ------------------------ |
-| Dafny    | ✅               | ❌            | packages, snippets       |
-| Lean     | ❌               | ✅            | atoms, atomsdependencies |
-| Isabelle | ❌               | ✅            | atoms, atomsdependencies |
-| Coq      | ❌               | ❌            | (snippets planned)       |
+### Dependency Management
+- Lean atomizer depends on `pantograph` which may fail to build
+- Use optional imports with graceful degradation:
+  ```python
+  try:
+      from atomization.lean.atomizer import atomize_lean
+  except ImportError:
+      atomize_lean = None
+  ```
 
-### Atom Types
-
-The atomizer categorizes code elements into:
-
-- **spec**: Specifications (requires, ensures, etc.)
-- **code**: Executable code (methods, functions)
-- **proof**: Proof elements (lemmas, assertions, invariants)
-- **spec+code**: Combined specification and implementation headers
+### Symbol Dependency Analysis
+- Text-based analysis using regex patterns to find symbol references
+- Filters out self-references and method definitions within classes
+- Distinguishes between actual function calls and symbol definitions
+- Returns dependency mappings compatible with vlib JSON schema
 
 ## Environment Configuration
 
-The application requires these environment variables:
-
+Required environment variables:
 - `DB_PASSWORD`: MySQL database password
 - `DB_HOST`: Database host (defaults to localhost)
 
 Database connection details are configured in `.env` file.
-
-## Testing Strategy
-
-Tests are organized in `test/` directory mirroring `src/` structure:
-
-- Unit tests for individual atomizers
-- Database integration tests
-- Language-specific test files for each supported language
-
-Examples for each language are provided in `examples/` directory for development and testing.

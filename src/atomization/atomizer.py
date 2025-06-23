@@ -9,7 +9,11 @@ from mysql import connector
 from mysql.connector import Error as MysqlConnectorError
 from bidict import bidict
 import typer
-from atomization.dafny.atomizer import atomize_dafny
+from atomization.dafny.atomizer import (
+    atomize_dafny_rgx,
+    atomize_dafny,
+    jsonify_vlib as dafny_jsonify_vlib,
+)
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
 
 try:
@@ -542,7 +546,7 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         code_language_id: int = get_code_language_id(code_id)
         if code_language_id == LANG_MAP["dafny"]:
             print(f"Atomizing Dafny code with ID {code_id}")
-            parsed_chunks = atomize_dafny(decoded_content)
+            parsed_chunks = atomize_dafny_rgx(decoded_content)
         elif code_language_id == LANG_MAP["lean"]:
             # For Lean, we need a different approach
             print(f"Atomizing Lean code with ID {code_id}")
@@ -679,10 +683,18 @@ def dry() -> None:
 
     @cli.command()
     def rocq(filepath: Path) -> None:
-        print(f"hi {filepath}")
         atomizer = CoqAtomizer(filepath)
         json_content = atomizer.jsonify_vlib()
         print(json_content)
+
+    @cli.command()
+    def dafny(filepath: Path) -> None:
+
+        with open(filepath, "r") as f:
+            content = f.read()
+        symbols, dependencies = atomize_dafny(content)
+        jsonified_symbols = dafny_jsonify_vlib(symbols, content, dependencies)
+        print(jsonified_symbols)
 
     cli()
 
