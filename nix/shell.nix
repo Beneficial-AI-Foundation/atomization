@@ -3,10 +3,13 @@
   perSystem =
     { system, ... }:
     let
-      config.permittedInsecurePackages = [
-        "dotnet-sdk-6.0.428"
-        "dotnet-runtime-6.0.36"
-      ];
+      config = {
+        permittedInsecurePackages = [
+          "dotnet-sdk-6.0.428"
+          "dotnet-runtime-6.0.36"
+        ];
+        allowUnfree = true;
+      };
       pkgs = import inputs.nixpkgs {
         inherit system config;
       };
@@ -23,7 +26,7 @@
       isabelle = [ pkgs.isabelle ];
       dafny = [ pkgs.dafny ];
       misc = with pkgs; [
-        nodejs_23
+        nodejs_24
         jq
         graphviz
         claude-code
@@ -34,6 +37,7 @@
         lean
         isabelle
         dafny
+        misc
       ];
       name = "atomization";
       shellHook = "echo ${name}";

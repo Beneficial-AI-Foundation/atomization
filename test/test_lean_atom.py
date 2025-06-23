@@ -100,9 +100,9 @@ def test_atomize_good_case(good_lean_file):
     ]
 
     for expected in expected_identifiers:
-        assert any(
-            expected in identifier for identifier in identifiers
-        ), f"Missing expected identifier: {expected}"
+        assert any(expected in identifier for identifier in identifiers), (
+            f"Missing expected identifier: {expected}"
+        )
 
 
 def test_atomize_bad_case_with_imports(bad_lean_file):

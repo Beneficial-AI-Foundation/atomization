@@ -175,15 +175,15 @@ def test_json_schema_validation(simple_theory_content):
     for atom in data["Atoms"]:
         # Check all required fields are present
         assert isinstance(atom, dict), "Each atom should be a dictionary"
-        assert (
-            set(atom.keys()) == required_fields
-        ), f"Atom missing required fields: {required_fields - set(atom.keys())}"
+        assert set(atom.keys()) == required_fields, (
+            f"Atom missing required fields: {required_fields - set(atom.keys())}"
+        )
 
         # Validate field types
         for field, expected_type in field_types.items():
-            assert isinstance(
-                atom[field], expected_type
-            ), f"Field '{field}' should be of type {expected_type}"
+            assert isinstance(atom[field], expected_type), (
+                f"Field '{field}' should be of type {expected_type}"
+            )
 
         # Additional specific validations
         assert atom["language"] == "Isabelle", "Language should be 'Isabelle'"
@@ -195,6 +195,6 @@ def test_json_schema_validation(simple_theory_content):
             "corollary",
             "proposition",
         }, f"Invalid statement_type: {atom['statement_type']}"
-        assert all(
-            isinstance(dep, str) for dep in atom["deps"]
-        ), "All dependencies should be strings"
+        assert all(isinstance(dep, str) for dep in atom["deps"]), (
+            "All dependencies should be strings"
+        )
