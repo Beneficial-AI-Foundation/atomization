@@ -47,18 +47,18 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
             text = term.step.short_text.strip()
             if ":=" not in text:
                 return BottomAtom()
-            
+
             # Split into declaration and body
             decl, body = text.split(":=", 1)
-            
+
             # Extract term type and identifier
             words = decl.split()
             term_type = words[0]  # Definition, Fixpoint, etc.
             identifier = words[1]  # The name
-            
+
             # Everything between the identifier and := is the signature
-            signature = decl[decl.find(identifier) + len(identifier):].strip()
-            
+            signature = decl[decl.find(identifier) + len(identifier) :].strip()
+
             return DefinitionAtom(
                 term_type,
                 identifier,
@@ -71,18 +71,18 @@ def atomize(term: Term, context: Atoms) -> AtomBase:
             text = term.step.short_text.strip()
             if ":=" not in text:
                 return BottomAtom()
-            
+
             # Split into declaration and constructors
             decl, constructors = text.split(":=", 1)
-            
+
             # Extract term type and identifier
             words = decl.split()
             term_type = words[0]  # Inductive, CoInductive, or Variant
             identifier = words[1]  # The name
-            
+
             # Everything between the identifier and := is the signature
-            signature = decl[decl.find(identifier) + len(identifier):].strip()
-            
+            signature = decl[decl.find(identifier) + len(identifier) :].strip()
+
             return InductiveAtom(
                 term_type,
                 identifier,
@@ -177,10 +177,7 @@ class CoqAtomizer(Atomizer):
     def atomize(self) -> Atoms:
         with CoqFile(str(self.filename)) as cf:
             cf.run()
-            return [
-                atomize(item, [])
-                for _, item in cf.context.terms.items()
-            ]
+            return [atomize(item, []) for _, item in cf.context.terms.items()]
 
     def jsonify(self) -> str:
         atoms = self.atomize()

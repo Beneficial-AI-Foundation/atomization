@@ -181,6 +181,6 @@ def test_existing_atoms(mock_existing_atoms, isabelle_atoms):
     code_id = 123
     # Simulate that an atom exists by returning a non-empty result in the initial query.
     mock_existing_atoms.fetchall.return_value = [{"identifier": "const_def", "id": 42}]
-    
+
     result = execute_atomize_command(isabelle_atoms, code_id)
     assert result == 1
