@@ -12,6 +12,7 @@ uv sync
 ```
 
 This provides access to:
+
 - Python 3.12+ with uv package manager
 - Coq with coq-lsp and dune
 - Lean 4 (via elan)
@@ -22,6 +23,7 @@ This provides access to:
 ## Common Commands
 
 ### Testing
+
 ```bash
 uv run pytest                    # Run local tests (excludes networked tests)
 PYTEST_ADDOPTS="" uv run pytest  # Run all tests including networked (on server)
@@ -30,6 +32,7 @@ uv run pytest test/test_dafny_lsp.py -v  # Run with verbose output
 ```
 
 ### Linting and Formatting
+
 ```bash
 uv run ruff check --fix          # Lint and auto-fix code
 uv run ruff format               # Format code
@@ -37,6 +40,7 @@ uv run pyright                   # Type checking
 ```
 
 ### Running the Atomizer
+
 ```bash
 uv run atomize <code_id>         # Atomize code with given database ID
 uv run atomize test              # Test database connection
@@ -44,6 +48,7 @@ uv run atomize delete <package_id>  # Delete package and cleanup
 ```
 
 ### Dry Run Examples (No Database)
+
 ```bash
 uv run dry dafny examples/dafny/sum.dfy      # Test Dafny LSP atomization
 uv run dry rocq examples/coq/example.v      # Test Coq atomization
@@ -51,6 +56,7 @@ uv run dry_coq <filename>                   # Dry run Coq atomizer on examples/c
 ```
 
 ### Docker Usage (Production)
+
 ```bash
 docker-compose run --remove-orphans atomization test
 docker-compose run atomization <code_id>
@@ -64,11 +70,13 @@ docker-compose run atomization delete <package_id>
 The system is built around async Language Server Protocol (LSP) clients for real-time code analysis:
 
 **Core LSP Framework** (`src/atomization/common/lsp/`):
+
 - `JsonRpcTransport`: Async JSON-RPC transport using `asyncio` subprocess communication
 - `AtomizerPlugin`: Abstract base class defining async LSP interface
 - All LSP operations use `async/await` patterns instead of blocking calls
 
 **Key LSP Methods**:
+
 - `async def initialize()`: Setup LSP server capabilities
 - `async def open_file()`: Notify server about file changes
 - `async def request_all_symbols()`: Extract symbols via `workspace/symbol`
@@ -77,12 +85,14 @@ The system is built around async Language Server Protocol (LSP) clients for real
 ### Dafny LSP Implementation
 
 **DafnyAtomizer** (`src/atomization/dafny/lsp_client.py`):
+
 - Captures Classes (kind 5), Methods (kind 6), and Functions (kind 12)
 - Performs dependency analysis by parsing symbol references in code
 - Extracts full symbol definitions including specifications and proofs
 - Outputs JSON format: `{"data": {"symbol_name": [["dependencies"], "source_code"]}}`
 
 **Two-tier Architecture**:
+
 - `atomize_dafny_async()`: Core async implementation returning symbols + dependencies
 - `atomize_dafny()`: Synchronous wrapper for backward compatibility
 - `atomize_dafny_with_deps()`: Returns both symbols and dependency graph
@@ -97,6 +107,7 @@ The system is built around async Language Server Protocol (LSP) clients for real
 ### Database Schema
 
 **MySQL database (`verilib`) tables**:
+
 - `codes`: Source code entries with language metadata
 - `packages`: Atomized packages linking to original code
 - `snippets`: Code fragments (Dafny only)
@@ -106,6 +117,7 @@ The system is built around async Language Server Protocol (LSP) clients for real
 ### Testing Architecture
 
 **Test Organization**:
+
 - `test/`: Local tests (run by default)
 - `test/networked/`: Database integration tests (require `PYTEST_ADDOPTS=""`)
 - Async tests use `@pytest.mark.asyncio` with proper fixtures
@@ -114,11 +126,13 @@ The system is built around async Language Server Protocol (LSP) clients for real
 ## Important Implementation Details
 
 ### LSP Timing Considerations
+
 - LSP servers need processing time after `textDocument/didOpen` before `workspace/symbol` requests
 - Use `await asyncio.sleep(2-3)` delays in tests and atomization functions
 - This is due to server-side parsing, not async implementation issues
 
 ### Dependency Management
+
 - Lean atomizer depends on `pantograph` which may fail to build
 - Use optional imports with graceful degradation:
   ```python
@@ -129,6 +143,7 @@ The system is built around async Language Server Protocol (LSP) clients for real
   ```
 
 ### Symbol Dependency Analysis
+
 - Text-based analysis using regex patterns to find symbol references
 - Filters out self-references and method definitions within classes
 - Distinguishes between actual function calls and symbol definitions
@@ -137,6 +152,7 @@ The system is built around async Language Server Protocol (LSP) clients for real
 ## Environment Configuration
 
 Required environment variables:
+
 - `DB_PASSWORD`: MySQL database password
 - `DB_HOST`: Database host (defaults to localhost)
 

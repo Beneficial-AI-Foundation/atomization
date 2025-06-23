@@ -689,7 +689,6 @@ def dry() -> None:
 
     @cli.command()
     def dafny(filepath: Path) -> None:
-
         with open(filepath, "r") as f:
             content = f.read()
         symbols, dependencies = atomize_dafny(content)

@@ -4,7 +4,7 @@
 
 ### Dependencies
 
-You'll have to have installed nix and [enabled flakes](https://nixos.wiki/wiki/flakes). This is for coq-lsp without touching opam, for dafny without touching dotnet, etc. etc. 
+You'll have to have installed nix and [enabled flakes](https://nixos.wiki/wiki/flakes). This is for coq-lsp without touching opam, for dafny without touching dotnet, etc. etc.
 
 ```base
 nix develop
