@@ -38,6 +38,8 @@ jobs:
           uv sync
       - name: Check lint
         run: uv run ruff check .
+      - name: Check formatting
+        run: uv run ruff format --check .
       - name: Run tests
         run: |
-          nix develop --command bash -c "uv run test"
+          nix develop --command bash -c "uv run pytest"

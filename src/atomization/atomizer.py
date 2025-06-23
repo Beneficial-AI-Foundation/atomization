@@ -11,7 +11,11 @@ from bidict import bidict
 import typer
 from atomization.dafny.atomizer import atomize_dafny
 from atomization.coq.atomizer import atomize_str_vlib as atomize_coq
-from atomization.lean.atomizer import atomize_lean
+
+try:
+    from atomization.lean.atomizer import atomize_lean
+except ImportError:
+    atomize_lean = None
 from atomization.coq.atomizer import CoqAtomizer
 from atomization.isabelle.atomizer import atomize_isa
 
@@ -542,6 +546,11 @@ def execute_atomize_command(code_id: int, parser: argparse.ArgumentParser) -> in
         elif code_language_id == LANG_MAP["lean"]:
             # For Lean, we need a different approach
             print(f"Atomizing Lean code with ID {code_id}")
+            if atomize_lean is None:
+                print(
+                    "Error: Lean support not available (pantograph dependency missing)"
+                )
+                return False
             parsed_chunks = atomize_lean(decoded_content, code_id)
 
             # Save Lean atoms to database (atoms and atomsdependencies tables)

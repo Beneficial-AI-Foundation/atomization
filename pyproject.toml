@@ -8,7 +8,7 @@ dependencies = [
     "coqpyt",
     "mysql-connector-python>=9.1.0",
     "python-dotenv>=1.0.1",
-    "pantograph",
+ #    "pantograph",
     "tqdm>=4.67.1",
     "dataclasses-json>=0.6.7",
 ]
@@ -17,12 +17,12 @@ dependencies = [
 atomize = "atomization.atomizer:run_atomizer"
 dry_coq = "atomization.atomizer:dry_coq"
 dry = "atomization.atomizer:dry"
-test = "pytest:main"
 
 [dependency-groups]
 dev = [
     "pytest>=8.3.4",
     "pytest-mock>=3.10.0",
+    "pytest-asyncio>=1.0.0",
     "ruff>=0.9.1",
     "ipykernel>=6.29.5",
     "typer>=0.16.0",
@@ -38,9 +38,13 @@ packages = ["src/atomization"]
 
 [tool.uv.sources]
 coqpyt = { git = "https://github.com/sr-lab/coqpyt" }
-pantograph = { git = "https://github.com/stanford-centaur/PyPantograph", rev = "dc6c465a960e2770a6b6aa713d3c958eca0c9575" }
+# pantograph = { git = "https://github.com/stanford-centaur/PyPantograph", rev = "dc6c465a960e2770a6b6aa713d3c958eca0c9575" }
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
 python_files = ["*_test.py", "test_*.py"]
 pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Ignore networked tests by default (require external dependencies)
+addopts = "--ignore=test/networked/" # override with `PYTEST_ADDOPTS="" uv run pytest` on server.

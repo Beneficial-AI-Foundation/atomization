@@ -1,5 +1,6 @@
 import pytest
 import logging
+import asyncio
 from pathlib import Path
 from atomization.dafny.lsp_client import DafnyAtomizer, DafnySymbol
 from atomization.common.lsp.transport import JsonRpcTransport
@@ -22,86 +23,72 @@ def dafny_example_files():
 
 
 @pytest.fixture
-def dafny_lsp_client():
+async def dafny_lsp_client():
     """Fixture providing a Dafny LSP client instance."""
     # Use dafny command from the environment (should be available via nix develop)
     transport = JsonRpcTransport(["dafny", "server"])
+    await transport.start()
     client = DafnyAtomizer(transport)
-    client.initialize()
+    await client.initialize()
     yield client
-    # Cleanup: terminate the subprocess
-    if client.transport.proc:
-        client.transport.proc.terminate()
+    # Cleanup: close transport
+    await transport.close()
 
 
-def test_symbol_kinds_from_examples(dafny_lsp_client, dafny_example_files):
+@pytest.mark.asyncio
+async def test_symbol_kinds_from_examples(dafny_lsp_client, dafny_example_files):
     """Test symbol discovery and verify what 'kind' values are returned."""
-    collected_symbols = []
-
-    def collect_symbols(symbols):
-        collected_symbols.extend(symbols)
-
     # Test with sum.dfy - contains a function
     sum_content = dafny_example_files["sum"].read_text()
     sum_uri = f"file://{dafny_example_files['sum'].absolute()}"
 
-    dafny_lsp_client.open_file(sum_uri, sum_content)
-    dafny_lsp_client.request_all_symbols(collect_symbols)
-
-    # Wait a moment for LSP response (in real usage you'd use proper async handling)
-    import time
-
-    time.sleep(2)
+    await dafny_lsp_client.open_file(sum_uri, sum_content)
+    # Wait for LSP server to process the file
+    await asyncio.sleep(2)
+    symbols_sum = await dafny_lsp_client.request_all_symbols()
 
     # Test with class_example.dfy - contains methods and classes
     class_content = dafny_example_files["class_example"].read_text()
     class_uri = f"file://{dafny_example_files['class_example'].absolute()}"
 
-    dafny_lsp_client.open_file(class_uri, class_content)
-    dafny_lsp_client.request_all_symbols(collect_symbols)
+    await dafny_lsp_client.open_file(class_uri, class_content)
+    # Wait for LSP server to process the file
+    await asyncio.sleep(2)
+    symbols_class = await dafny_lsp_client.request_all_symbols()
 
-    time.sleep(2)
+    # Combine all symbols
+    all_symbols = symbols_sum + symbols_class
 
     # Print all symbols and their kinds for debugging
-    print(f"\nFound {len(collected_symbols)} symbols:")
-    for sym in collected_symbols:
-        print(f"  {sym.name} (kind: {getattr(sym, 'kind', 'unknown')})")
+    print(f"\nFound {len(all_symbols)} symbols:")
+    for sym in all_symbols:
+        print(f"  {sym.name}")
 
     # The current implementation only collects symbols with kind == 12
     # Let's verify this assumption
-    assert len(collected_symbols) > 0, "Should have found some symbols"
+    assert len(all_symbols) > 0, "Should have found some symbols"
 
     # All collected symbols should be methods according to current filter
-    for sym in collected_symbols:
+    for sym in all_symbols:
         assert isinstance(sym, DafnySymbol)
         assert sym.name is not None
         assert sym.uri is not None
 
 
-def test_all_symbol_kinds_investigation(dafny_lsp_client, dafny_example_files):
+@pytest.mark.asyncio
+async def test_all_symbol_kinds_investigation(dafny_lsp_client, dafny_example_files):
     """Modified version that captures ALL symbol kinds to investigate what Dafny LSP returns."""
-    all_symbols_with_kinds = []
-
-    def collect_all_symbols(symbols):
-        """Collect all symbols regardless of kind."""
-        all_symbols_with_kinds.extend(symbols)
-
     # Load multiple files to get diverse symbols
     for file_key, file_path in dafny_example_files.items():
         content = file_path.read_text()
         uri = f"file://{file_path.absolute()}"
-        dafny_lsp_client.open_file(uri, content)
+        await dafny_lsp_client.open_file(uri, content)
 
-    # Give the server time to process the files
-    import time
-
-    time.sleep(2)
+    # Wait for LSP server to process all files
+    await asyncio.sleep(3)
 
     # Request symbols using debug method
-    dafny_lsp_client.request_all_symbols_debug(collect_all_symbols)
-
-    # Wait for response
-    time.sleep(3)
+    all_symbols_with_kinds = await dafny_lsp_client.request_all_symbols_debug()
 
     # Print findings
     print(f"\nInvestigation Results - Found {len(all_symbols_with_kinds)} symbols:")

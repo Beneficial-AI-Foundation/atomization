@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, TypeVar
+from typing import Generic, TypeVar
 from atomization.common.lsp.transport import JsonRpcTransport
 
 Symbol = TypeVar("Symbol")
@@ -13,19 +13,17 @@ class AtomizerPlugin(ABC, Generic[Symbol, Ref]):
         self.refs: list[Ref] = []
 
     @abstractmethod
-    def initialize(self) -> None:
+    async def initialize(self) -> None:
         """send initialize & initialized() to LSP"""
 
     @abstractmethod
-    def open_file(self, uri: str, text: str) -> None:
+    async def open_file(self, uri: str, text: str) -> None:
         """notify server about a new/changed file"""
 
     @abstractmethod
-    def request_all_symbols(self, on_symbols: Callable[[list[Symbol]], None]) -> None:
+    async def request_all_symbols(self) -> list[Symbol]:
         """populate `symbols` via workspace/symbol or equivalent"""
 
     @abstractmethod
-    def request_references(
-        self, sym: Symbol, on_refs: Callable[[list[Ref]], None]
-    ) -> None:
+    async def request_references(self, sym: Symbol) -> list[Ref]:
         """for a given symbol, populate `refs` via textDocument/references"""
