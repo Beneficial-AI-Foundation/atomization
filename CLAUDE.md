@@ -66,6 +66,26 @@ The atomizer supports multiple formal verification languages:
 3. **Lean Atomizer** (`src/atomization/lean/`): Handles Lean 4 code via PyPantograph
 4. **Isabelle Atomizer** (`src/atomization/isabelle/`): Processes Isabelle/HOL theories with Scala backend
 
+### LSP Integration
+
+The system includes Language Server Protocol (LSP) clients for enhanced code analysis:
+
+**Common LSP Framework** (`src/atomization/common/lsp/`):
+- `JsonRpcTransport`: JSON-RPC transport layer over subprocess communication
+- `AtomizerPlugin`: Abstract base class for language-specific LSP clients
+
+**Dafny LSP Client** (`src/atomization/dafny/lsp_client.py`):
+- `DafnyAtomizer`: Concrete implementation for Dafny LSP integration
+- Supports symbol discovery via `workspace/symbol` requests
+- Enables reference finding via `textDocument/references` requests
+- Handles file opening with `textDocument/didOpen` notifications
+
+The LSP clients enable:
+- Symbol extraction from workspace
+- Reference tracking across files  
+- Real-time code analysis through language servers
+- Enhanced dependency analysis for atomization
+
 ### Database Integration
 
 The system integrates with a MySQL database (`verilib`) containing:
