@@ -49,7 +49,7 @@ requires-dist = [
     { name = "coqpyt", git = "https://github.com/sr-lab/coqpyt" },
     { name = "dataclasses-json", specifier = ">=0.6.7" },
     { name = "mysql-connector-python", specifier = ">=9.1.0" },
-    { name = "pantograph", git = "https://github.com/stanford-centaur/PyPantograph" },
+    { name = "pantograph", git = "https://github.com/stanford-centaur/PyPantograph?rev=dc6c465a960e2770a6b6aa713d3c958eca0c9575" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
@@ -389,8 +389,8 @@ wheels = [
 
 [[package]]
 name = "pantograph"
-version = "0.3.1"
-source = { git = "https://github.com/stanford-centaur/PyPantograph#f279f86b0f168fbe2d13938e16fbb7bce1babfa7" }
+version = "0.3.2"
+source = { git = "https://github.com/stanford-centaur/PyPantograph?rev=dc6c465a960e2770a6b6aa713d3c958eca0c9575#dc6c465a960e2770a6b6aa713d3c958eca0c9575" }
 
 [[package]]
 name = "parso"
