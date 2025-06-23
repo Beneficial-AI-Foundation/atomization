@@ -386,9 +386,11 @@ def atoms_to_schema(atoms: Collection[AtomizedDef]) -> list[Schema]:
             Schema(
                 identifier=dep,
                 # type: ignore
-                body=name_to_atom[dep].source_code
-                if name_to_atom[dep].source_code is not None
-                else "",
+                body=(
+                    name_to_atom[dep].source_code
+                    if name_to_atom[dep].source_code is not None
+                    else ""
+                ),
                 type="code" if name_to_atom[dep].kind == "def" else "proof",
                 language="lean",
                 deps=[],  # TODO this should be recursive?
@@ -475,7 +477,7 @@ def sort_atoms(atoms: list[AtomizedDef]) -> list[AtomizedDef]:
 
 
 def set_toolchain(
-    project_root: Path, version: str = "leanprover/lean4:v4.16.0-rc1"
+    project_root: Path, version: str = "leanprover/lean4:v4.20.1"
 ) -> None:
     """Set the toolchain for a Lean project."""
     project_root.mkdir(parents=True, exist_ok=True)
@@ -495,7 +497,7 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
     project_root = Path(f"/tmp/{project_name}")
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
-    
+
     # First check if code has any imports. If so, fail gracefully
     if "import" in code:
         logger.warning("Code has imports, which are not supported yet.")
@@ -511,11 +513,11 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
                 capture_output=True,
                 text=True,
             )
-            
+
             if result.returncode != 0:
                 # If the lake command failed, raise an error with the output
                 raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
-                
+
             print(f"Created Lean project at {project_root}")
             print("Command output:", result.stdout)
         else:
@@ -528,10 +530,12 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
         set_toolchain(project_root)
         return True
 
+
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
     set_toolchain(project_root)
     subprocess.run(["lake", "build"], cwd=project_root)
+
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""
