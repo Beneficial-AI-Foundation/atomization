@@ -23,7 +23,7 @@ def test_delete_code_atoms_success_when_atoms_exist(mock_db_connection):
     # And simulate a list of atom ids:
     mock_cursor.fetchall.side_effect = [
         [{"id": 10}, {"id": 20}],  # for SELECT id FROM atoms
-        []  # for SELECT DISTINCT childatom_id (if needed afterwards)
+        [],  # for SELECT DISTINCT childatom_id (if needed afterwards)
     ]
     result = delete_code_atoms(1)
     # Check that DELETE queries were issued:
@@ -46,6 +46,8 @@ def test_delete_code_atoms_no_atoms(mock_db_connection):
 
 def test_delete_code_atoms_failure(mock_db_connection):
     """Test that delete_code_atoms returns (False, False) when a database error occurs."""
-    mock_db_connection.cursor.return_value.execute.side_effect = MysqlConnectorError("DB error")
+    mock_db_connection.cursor.return_value.execute.side_effect = MysqlConnectorError(
+        "DB error"
+    )
     result = delete_code_atoms(1)
     assert result == (False, False)
