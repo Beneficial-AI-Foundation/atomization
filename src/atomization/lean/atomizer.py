@@ -495,7 +495,7 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
     project_root = Path(f"/tmp/{project_name}")
     root_file = project_root / f"{project_name}.lean"
     main_file = project_root / "Main.lean"
-    
+
     # First check if code has any imports. If so, fail gracefully
     if "import" in code:
         logger.warning("Code has imports, which are not supported yet.")
@@ -511,11 +511,11 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
                 capture_output=True,
                 text=True,
             )
-            
+
             if result.returncode != 0:
                 # If the lake command failed, raise an error with the output
                 raise RuntimeError(f"Failed to create Lean project: {result.stderr}")
-                
+
             print(f"Created Lean project at {project_root}")
             print("Command output:", result.stdout)
         else:
@@ -528,10 +528,12 @@ def create_dummy_lean_project(code: str, pkg_id: int) -> bool:
         set_toolchain(project_root)
         return True
 
+
 def build_lean_project(project_root: Path) -> None:
     """Build a Lean project. Necessary before running `pantograph`."""
     set_toolchain(project_root)
     subprocess.run(["lake", "build"], cwd=project_root)
+
 
 def atomize_lean(code: str, pkg_id: int) -> list[Schema]:
     """Atomize a Lean project and return a list of `Schema`s."""

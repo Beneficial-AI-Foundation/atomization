@@ -13,16 +13,19 @@
         coqpyt-src = inputs.coqpyt;
       };
       lean = [ pkgs.elan ];
-      buildInputs =
+      c = with pkgs; [ clang-tools libclang ];
+      buildInputs = builtins.concatLists [
         coq
-        ++ python
-        ++ lean
-        ++ [
+        python
+        lean
+        c
+        [
           pkgs.nodejs_23
           pkgs.jq
           pkgs.graphviz
           pkgs.isabelle
-        ];
+        ]
+      ];
       name = "atomization";
       shellHook = "echo ${name}";
     in
