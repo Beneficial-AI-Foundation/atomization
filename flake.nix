@@ -1,5 +1,5 @@
 {
-  description = "Messing around with the atomization idea for coq";
+  description = "atomization";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     parts.url = "github:hercules-ci/flake-parts";

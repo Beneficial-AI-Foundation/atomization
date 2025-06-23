@@ -1,8 +1,15 @@
 { inputs, ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { system, ... }:
     let
+      config.permittedInsecurePackages = [
+        "dotnet-sdk-6.0.428"
+        "dotnet-runtime-6.0.36"
+      ];
+      pkgs = import inputs.nixpkgs {
+        inherit system config;
+      };
       coq = with pkgs; [
         coqPackages.coq
         coqPackages.coq-lsp
@@ -13,16 +20,21 @@
         coqpyt-src = inputs.coqpyt;
       };
       lean = [ pkgs.elan ];
-      buildInputs =
+      isabelle = [ pkgs.isabelle ];
+      dafny = [ pkgs.dafny ];
+      misc = with pkgs; [
+        nodejs_23
+        jq
+        graphviz
+        claude-code
+      ];
+      buildInputs = builtins.concatLists [
         coq
-        ++ python
-        ++ lean
-        ++ [
-          pkgs.nodejs_23
-          pkgs.jq
-          pkgs.graphviz
-          pkgs.isabelle
-        ];
+        python
+        lean
+        isabelle
+        dafny
+      ];
       name = "atomization";
       shellHook = "echo ${name}";
     in
