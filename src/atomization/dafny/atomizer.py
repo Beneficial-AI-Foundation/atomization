@@ -1,4 +1,5 @@
 import asyncio
+import json
 from atomization.dafny.parser import parse_dafny
 from atomization.dafny.lsp_client import DafnyAtomizer, DafnySymbol
 from atomization.common.lsp.transport import JsonRpcTransport
@@ -39,7 +40,14 @@ async def atomize_dafny_async(
         # Wait for LSP to process
         await asyncio.sleep(timeout)
 
-        symbols = await atomizer.request_all_symbols()
+        # Try the new source-aware method first, fallback to original if it fails
+        try:
+            symbols = await atomizer.request_all_symbols_with_source(content)
+        except Exception as e:
+            print(f"Warning: Source-aware symbol extraction failed: {e}")
+            print("Falling back to basic symbol extraction...")
+            symbols = await atomizer.request_all_symbols()
+
         dependencies = await atomizer.build_dependency_graph(symbols, content)
 
         return symbols, dependencies
@@ -66,7 +74,7 @@ def jsonify_vlib(
     symbols: list[DafnySymbol],
     source_content: str = "",
     dependencies: dict[str, list[str]] | None = None,
-) -> dict:
+) -> str:
     """Convert symbols to vlib JSON format matching the schema.
 
     Args:
@@ -75,7 +83,7 @@ def jsonify_vlib(
         dependencies: Optional dependency graph mapping symbol names to their dependencies
 
     Returns:
-        Dict matching the vlib schema with data map from names to [dependencies, code] pairs
+        JSON string matching the vlib schema with data map from names to [dependencies, code, type] tuples
     """
     data = {}
 
@@ -116,6 +124,6 @@ def jsonify_vlib(
                 if function_lines:
                     code = "\n".join(function_lines).strip()
 
-        data[symbol.name] = [symbol_dependencies, code]
+        data[symbol.name] = [symbol_dependencies, code, symbol.type]
 
-    return {"data": data}
+    return json.dumps({"data": data}, indent=2)

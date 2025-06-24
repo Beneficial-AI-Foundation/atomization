@@ -9,6 +9,7 @@ class DafnySymbol:
     name: str
     uri: str
     position: dict
+    type: str
 
 
 @dataclass
@@ -75,26 +76,123 @@ class DafnyAtomizer(AtomizerPlugin[DafnySymbol, DafnyRef]):
             },
         )
 
+    def _determine_dafny_type(
+        self,
+        symbol_name: str,
+        symbol_kind: int,
+        source_content: str = "",
+        symbol_position: dict = None,
+    ) -> str:
+        """Determine the actual Dafny type (function, method, lemma, predicate) from source code."""
+        # Default mapping based on LSP symbol kind
+        kind_to_type = {
+            5: "class",
+            6: "method",
+            12: "function",
+        }
+
+        default_type = kind_to_type.get(symbol_kind, f"unknown_kind_{symbol_kind}")
+
+        if not source_content or not symbol_position:
+            return default_type
+
+        try:
+            lines = source_content.split("\n")
+            start_line = symbol_position.get("line", 0)
+
+            if start_line < len(lines):
+                # Look at the line where the symbol is defined and a few lines around it
+                search_lines = []
+                for i in range(max(0, start_line - 2), min(len(lines), start_line + 3)):
+                    search_lines.append(lines[i])
+
+                search_text = " ".join(search_lines).lower()
+
+                # Check for Dafny-specific keywords
+                if f"lemma {symbol_name.lower()}" in search_text:
+                    return "lemma"
+                elif f"predicate {symbol_name.lower()}" in search_text:
+                    return "predicate"
+                elif f"function {symbol_name.lower()}" in search_text:
+                    return "function"
+                elif f"method {symbol_name.lower()}" in search_text:
+                    return "method"
+                elif f"class {symbol_name.lower()}" in search_text:
+                    return "class"
+
+        except Exception as e:
+            self.logger.debug(f"Error determining type for {symbol_name}: {e}")
+
+        return default_type
+
+    async def request_all_symbols_with_source(
+        self, source_content: str = ""
+    ) -> list[DafnySymbol]:
+        """Request symbols and determine their types using source code analysis."""
+        try:
+            result = await self.transport.send("workspace/symbol", {"query": ""})
+            self.logger.debug(f"workspace/symbol response: {result}")
+
+            syms = []
+            if result:
+                for s in result:
+                    symbol_kind = s.get("kind", -1)
+                    symbol_name = s.get("name", "")
+                    symbol_position = (
+                        s.get("location", {}).get("range", {}).get("start", {})
+                    )
+
+                    # Only include relevant symbol kinds
+                    if symbol_kind in (5, 6, 12):  # Class, Method, Function
+                        symbol_type = self._determine_dafny_type(
+                            symbol_name, symbol_kind, source_content, symbol_position
+                        )
+
+                        syms.append(
+                            DafnySymbol(
+                                symbol_name,
+                                s["location"]["uri"],
+                                symbol_position,
+                                symbol_type,
+                            )
+                        )
+
+            self.logger.info(
+                f"Found {len(syms)} symbols with types determined from source"
+            )
+            return syms
+        except Exception as e:
+            self.logger.error(f"Error in request_all_symbols_with_source: {e}")
+            # Fallback to original method
+            return await self.request_all_symbols()
+
     async def request_all_symbols(self) -> list[DafnySymbol]:
+        """Request symbols with basic type mapping."""
         result = await self.transport.send("workspace/symbol", {"query": ""})
         self.logger.debug(f"workspace/symbol response: {result}")
+
+        # Map LSP symbol kinds to Dafny type names
+        kind_to_type = {
+            5: "class",  # Class
+            6: "method",  # Method
+            12: "function",  # Function
+        }
 
         syms = []
         if result:
             for s in result:
                 # Capture Classes (5), Methods (6), and Functions (12)
-                # Kind 5 = Class, Kind 6 = Method, Kind 12 = Function
-                if s["kind"] in (5, 6, 12):
+                if s["kind"] in kind_to_type:
+                    symbol_type = kind_to_type[s["kind"]]
                     syms.append(
                         DafnySymbol(
                             s["name"],
                             s["location"]["uri"],
                             s["location"]["range"]["start"],
+                            symbol_type,
                         )
                     )
-        self.logger.info(
-            f"Found {len(syms)} symbols (Classes: kind 5, Methods: kind 6, Functions: kind 12)"
-        )
+        self.logger.info(f"Found {len(syms)} symbols (Classes, Methods, Functions)")
         return syms
 
     async def request_all_symbols_debug(self) -> list[dict]:
