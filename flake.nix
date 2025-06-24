@@ -1,13 +1,13 @@
 {
-  description = "Messing around with the atomization idea for coq";
+  description = "atomization";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     parts.url = "github:hercules-ci/flake-parts";
+    fmt.url = "github:numtide/treefmt-nix";
     coqpyt = {
       url = "github:sr-lab/coqpyt";
       flake = false;
     };
-    fmt.url = "github:numtide/treefmt-nix";
     pantograph.url = "github:lenianiva/Pantograph";
   };
   outputs =
@@ -15,8 +15,8 @@
       self,
       nixpkgs,
       parts,
-      coqpyt,
       fmt,
+      coqpyt,
       pantograph,
     }@inputs:
     parts.lib.mkFlake { inherit inputs; } {

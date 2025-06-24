@@ -1,8 +1,12 @@
 { inputs, ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { system, ... }:
     let
+      config.allowUnfree = true;
+      pkgs = import inputs.nixpkgs {
+        inherit system config;
+      };
       coq = with pkgs; [
         coqPackages.coq
         coqPackages.coq-lsp
@@ -13,16 +17,22 @@
         coqpyt-src = inputs.coqpyt;
       };
       lean = [ pkgs.elan ];
-      buildInputs =
+      isabelle = [ pkgs.isabelle ];
+      dafny = [ pkgs.dafny ];
+      misc = with pkgs; [
+        nodejs_24
+        jq
+        graphviz
+        claude-code
+      ];
+      buildInputs = builtins.concatLists [
         coq
-        ++ python
-        ++ lean
-        ++ [
-          pkgs.nodejs_23
-          pkgs.jq
-          pkgs.graphviz
-          pkgs.isabelle
-        ];
+        python
+        lean
+        isabelle
+        dafny
+        misc
+      ];
       name = "atomization";
       shellHook = "echo ${name}";
     in

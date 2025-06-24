@@ -11,19 +11,18 @@ dependencies = [
     "pantograph",
     "tqdm>=4.67.1",
     "dataclasses-json>=0.6.7",
-    "bidict>=0.23.1",
 ]
 
 [project.scripts]
 atomize = "atomization.atomizer:run_atomizer"
 dry_coq = "atomization.atomizer:dry_coq"
 dry = "atomization.atomizer:dry"
-test = "pytest:main"
 
 [dependency-groups]
 dev = [
     "pytest>=8.3.4",
     "pytest-mock>=3.10.0",
+    "pytest-asyncio>=1.0.0",
     "ruff>=0.9.1",
     "ipykernel>=6.29.5",
     "typer>=0.16.0",
@@ -45,3 +44,7 @@ pantograph = { git = "https://github.com/stanford-centaur/PyPantograph", rev = "
 testpaths = ["test"]
 python_files = ["*_test.py", "test_*.py"]
 pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Ignore networked tests by default (require external dependencies)
+addopts = "--ignore=test/networked/" # override with `PYTEST_ADDOPTS="" uv run pytest` on server.
