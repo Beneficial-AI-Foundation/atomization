@@ -1,3 +1,5 @@
+# DEFUNCT: See https://github.com/Beneficial-AI-Foundation/verilib-monorepo/tree/main/atomization
+
 # atomization
 
 ## Usage: local development, no docker
